@@ -511,49 +511,40 @@
   // =====================================================================
   const PW = 64, PH = 84, PAX = 32, PAY = 74;
   function drawHero(g, step) {
-    const leg = [0, 3, 0, -3][step], bob = [0, -1, 0, -1][step], fl = [0, 3, 0, -3][step];
+    const leg = [0, 3, 0, -3][step], bob = [0, -1, 0, -1][step], fl = [0, 2, 0, -2][step];
     g.save();
     g.translate(0, bob);
-    // long amber scarf streaming behind
-    P(g, [[28, 37], [20, 38], [9 - fl, 42 + fl * 0.4], [3 - fl, 52], [8 - fl, 51], [14, 46], [26, 43]], '#ff8a1e', MOON);
-    P(g, [[26, 40], [16, 44], [8 - fl, 56 + fl * 0.3], [15 - fl, 55], [21, 49], [28, 45]], '#c85a0a', false);
-    // long coat tails flapping
-    P(g, [[24, 52], [15 - fl * 0.6, 62], [11 - fl * 0.6, 73], [21, 69], [30, 71]], '#171020', MOON);
-    // boots
+    // short scarf tail
+    P(g, [[26, 40], [18 - fl, 44], [14 - fl, 52], [21, 49], [27, 45]], '#ff8a1e', MOON);
+    // legs and boots
     g.save(); g.translate(0, -bob);
     for (const [x, o] of [[25, leg], [34, -leg]]) {
       const lift = Math.max(0, o) * 0.6;
-      P(g, [[x + o * 0.4, 62 - lift], [x + 7 + o * 0.4, 62 - lift], [x + 9 + o * 0.4, 74 - lift], [x - 2 + o * 0.4, 74 - lift]], '#0e0a18', MOON);
-      P(g, [[x - 1 + o * 0.4, 66 - lift], [x + 8 + o * 0.4, 66 - lift], [x + 8 + o * 0.4, 68 - lift], [x - 1 + o * 0.4, 68 - lift]], '#d8a040', false);
+      P(g, [[x + o * 0.4, 58 - lift], [x + 6 + o * 0.4, 58 - lift], [x + 6 + o * 0.4, 74 - lift], [x - 1 + o * 0.4, 74 - lift]], '#2c3346', MOON);
+      P(g, [[x - 1 + o * 0.4, 69 - lift], [x + 7 + o * 0.4, 69 - lift], [x + 8 + o * 0.4, 74 - lift], [x - 1 + o * 0.4, 74 - lift]], '#4a3a30', false);
     }
     g.restore();
-    // coat body
-    P(g, [[21, 38], [43, 38], [46, 52], [49, 69], [42, 66], [38, 72], [32, 66], [26, 72], [22, 66], [18, 52]], '#1c1426', MOON);
-    P(g, [[29, 42], [35, 42], [38, 68], [32, 63], [26, 68]], '#c8283a', false);
-    line(g, [[29, 42], [26, 68]], '#e8b040', 1.2); line(g, [[35, 42], [38, 68]], '#e8b040', 1.2);
-    P(g, [[19, 52], [45, 52], [45, 56], [19, 56]], '#2a2030', false);
-    P(g, [[29, 51.5], [35, 51.5], [35, 56.5], [29, 56.5]], '#f2c14a', false); glow(g, 32, 54, 8, '255,200,90', 0.6);
-    // high collar and shoulder guard
-    P(g, [[21, 38], [24, 28], [32, 33], [40, 28], [43, 38], [32, 43]], '#241a32', MOON);
-    P(g, [[15, 41], [20, 34], [28, 36], [27, 46], [18, 47]], '#2e2440', MOON); spike(g, 19, 36, 5, 9, '#2e2440'); spike(g, 24, 35, 4, 7, '#2e2440');
-    // glowing rune gauntlet (left)
-    P(g, [[14, 48], [20, 48], [21, 56], [14, 57]], '#2a2030', MOON);
-    glow(g, 17.5, 53, 11, '255,170,60', 0.85); E(g, 17.5, 53, 2.2, 2.2, '#ffe0a0', false);
-    // head: pale skin, spiky silver hair
-    P(g, [[25, 25], [41, 25], [43, 33], [38, 42], [29, 42], [24, 34]], '#f2dccb', MOON);
-    P(g, [[22, 30], [20, 14], [27, 21], [29, 6], [34, 19], [41, 4], [42, 20], [49, 12], [44, 29], [38, 24], [30, 25]], '#e4ecf6', 'rgba(255,255,255,0.95)');
-    P(g, [[24, 29], [32, 22], [34, 28], [27, 33]], '#cfd9e8', false);
-    eye(g, 37.5, 33, 2.6, 1.7, '255,170,40', -0.2);
-    line(g, [[33, 30.2], [40, 31]], '#3a2a30', 1.1);
-    line(g, [[34, 39], [38, 38.4]], '#a0705a', 1);
-    // right arm levels an oversized occult revolver
-    line(g, [[40, 42], [49, 46]], '#1c1426', 4.6);
-    P(g, [[46, 42], [58, 41], [63, 43], [63, 47], [56, 47], [54, 54], [49, 54], [50, 47], [46, 47]], '#2a2a36', 'rgba(255,255,255,0.9)');
-    P(g, [[56, 41], [63, 43], [63, 47], [56, 47]], '#3a3a48', false);
-    line(g, [[50, 44.5], [62, 44.5]], '#ffb040', 1.3);
-    E(g, 50.5, 49.5, 2.6, 2.6, '#f2dccb', false);
-    glow(g, 63.5, 44.5, 9, '255,180,60', 0.85);
-    E(g, 63, 44.5, 1.6, 1.6, '#fff0c0', false);
+    // jacket
+    P(g, [[23, 40], [41, 40], [43, 60], [21, 60]], '#3558a8', MOON);
+    P(g, [[30, 41], [34, 41], [35, 60], [29, 60]], '#e8eef8', false);
+    P(g, [[21, 56], [43, 56], [43, 60], [21, 60]], '#27427f', false);
+    // scarf at the neck
+    P(g, [[24, 37], [40, 37], [41, 42], [23, 42]], '#ff8a1e', MOON);
+    // left arm
+    line(g, [[23, 43], [19, 54]], '#3558a8', 4.6);
+    E(g, 19, 55.5, 2.6, 2.6, '#f4d9c0', false);
+    // head
+    E(g, 32, 30, 9.5, 9.5, '#f4d9c0', MOON);
+    P(g, [[22, 29], [23, 20], [30, 15], [38, 16], [42, 22], [42, 29], [38, 24], [30, 23], [26, 27]], '#6a4630', MOON);
+    E(g, 36.5, 31.5, 1.5, 1.7, '#2a2230', false); E(g, 29.5, 31.5, 1.5, 1.7, '#2a2230', false);
+    E(g, 37, 31, 0.5, 0.5, '#ffffff', false); E(g, 30, 31, 0.5, 0.5, '#ffffff', false);
+    line(g, [[32, 35.5], [35, 35.5]], '#b07a60', 1);
+    // right arm and a small pistol
+    line(g, [[41, 43], [49, 47]], '#3558a8', 4.6);
+    P(g, [[47, 42], [58, 42], [58, 46], [51, 46], [51, 52], [47, 52]], '#4a5262', 'rgba(255,255,255,0.9)');
+    P(g, [[52, 42], [58, 42], [58, 46], [52, 46]], '#5c6578', false);
+    E(g, 49, 48.5, 2.5, 2.5, '#f4d9c0', false);
+    glow(g, 58.5, 44, 5, '255,190,80', 0.6);
     g.restore();
   }
   const playerFrames = [0, 1, 2, 3].map(i => mk(PW, PH, g => drawHero(g, i)));
@@ -871,12 +862,12 @@
     { name: 'golem',     r: 24, cy: 46, hitR: 30, speed: 38,  hp: 220, xp: 10, w: 112, h: 112, ax: 56, ay: 100, sh: 30, color: '#ff8a2a', draw: dGolem,    minT: 110, weight: 1.3, armor: 2 },
     { name: 'treant',    r: 22, cy: 38, hitR: 26, speed: 42,  hp: 280, xp: 12, w: 88, h: 88, ax: 44, ay: 80, sh: 28, color: '#7aff6a', draw: dTreant,     minT: 125, weight: 1.1, armor: 3 },
   ];
-  const BOSS_TYPE = { name: 'ムーンイーター', boss: true, r: 36, cy: 70, hitR: 46, speed: 46, hp: 1400, xp: 10, w: 160, h: 160, ax: 80, ay: 148, sh: 48, color: '#ff5aae', draw: dMoonEater, armor: 2 };
+  const BOSS_TYPE = { name: 'ムーンイーター', boss: true, r: 36, cy: 70, hitR: 46, speed: 44, hp: 1000, xp: 10, w: 160, h: 160, ax: 80, ay: 148, sh: 48, color: '#ff5aae', draw: dMoonEater, armor: 2 };
   const MINW = { ooze: 1, bat: 2, spider: 2, bonewalker: 3, ghost: 4, wisp: 4, hound: 5, ghoul: 6, sporeling: 6, knight: 7, reaper: 8, golem: 9, treant: 10 };
   for (const t of ENEMY_TYPES) t.minW = MINW[t.name] || 1;
   const TOUCH = { ooze: 6, bat: 5, spider: 7, bonewalker: 8, ghost: 8, wisp: 6, hound: 9, ghoul: 12, sporeling: 8, knight: 14, reaper: 12, golem: 22, treant: 24 };
   for (const t of ENEMY_TYPES) t.dmg = TOUCH[t.name] || 8;
-  BOSS_TYPE.dmg = 30;
+  BOSS_TYPE.dmg = 22;
   for (const t of ENEMY_TYPES.concat([BOSS_TYPE])) {
     const fit = { knight: 0.88, reaper: 0.93, hound: 0.94, moon: 0.88 }[t.boss ? 'moon' : t.name] || 1;
     t.spr = [0, 1].map(f => mk(t.w, t.h, g => {
@@ -1003,8 +994,8 @@
     const lv = k => Math.max(0, up[k] - 1);
     S.mis = { n: cnt[up.missile] * (aw.missile ? 2 : 1) + (aw.missile ? 2 : 0), cd: 2.4 * Math.pow(0.9, lv('missile')) * cm * (aw.missile ? 0.75 : 1),
       dmg: Math.round(24 * (1 + 0.3 * lv('missile')) * dm), r: aw.missile ? 85 : 58 };
-    S.las = { chain: [0, 1, 2, 4, 6, 9][up.laser] + (aw.laser ? 8 : 0), n: [0, 3, 3, 4, 4, 5][up.laser] + (aw.laser ? 3 : 0), cd: 6 * Math.pow(0.88, lv('laser')) * cm, dur: (0.5 + 0.05 * up.laser) * (aw.laser ? 1.5 : 1),
-      dmg: Math.round(3 * (1 + 0.4 * lv('laser')) * dm * (aw.laser ? 1.3 : 1)), w: aw.laser ? 34 : 24 };
+    S.las = { chain: [0, 0, 1, 2, 3, 5][up.laser] + (aw.laser ? 5 : 0), n: [0, 3, 3, 3, 4, 4][up.laser] + (aw.laser ? 2 : 0), cd: 7 * Math.pow(0.9, lv('laser')) * cm, dur: (0.45 + 0.04 * up.laser) * (aw.laser ? 1.5 : 1),
+      dmg: Math.round(2 * (1 + 0.45 * lv('laser')) * dm * (aw.laser ? 1.3 : 1)), w: aw.laser ? 34 : 24 };
     S.bmb = { n: cnt[up.bomb], cd: 3.2 * Math.pow(0.92, lv('bomb')) * cm, dmg: Math.round(36 * (1 + 0.3 * lv('bomb')) * dm),
       r: (80 + 8 * up.bomb) * (aw.bomb ? 1.25 : 1) };
   }
@@ -1088,7 +1079,8 @@
   }
 
   // ---- enemies ----
-  const hpScale = () => 1 + 0.18 * (wave - 1);
+  const hpScale = () => 1 + 0.26 * (wave - 1) + 0.005 * (wave - 1) ** 2;
+  const speedScale = () => Math.min(1.4, 1 + 0.02 * (wave - 1));
   function pickType() {
     const wgt = t => t.weight * (wave - t.minW <= 1 ? 1.8 : 1); // favour the newest types
     let total = 0;
@@ -1121,7 +1113,7 @@
   function startWave(n) {
     wave = n; wavePhase = 'spawn';
     const boss = n % 5 === 0;
-    waveTotal = Math.min(90, boss ? 8 + n * 2 : 10 + n * 4);
+    waveTotal = Math.min(120, boss ? 8 + n * 3 : 12 + n * 5);
     waveSpawned = 0; spawnTimer = 1.2;
     waveBannerT = 2.4; waveBannerText = 'WAVE ' + n;
     waveBannerSub = boss ? 'ボスウェーブ' : `敵 ${waveTotal}体`;
@@ -1184,7 +1176,7 @@
       e.flash = Math.max(0, e.flash - dt);
       const dx = player.x - e.x, dy = player.y - e.y;
       const d = Math.hypot(dx, dy) || 1;
-      let mx = dx / d, my = dy / d, spd = t.speed;
+      let mx = dx / d, my = dy / d, spd = t.speed * speedScale();
       if (e.boss) {
         e.pt += dt;
         if (e.ph === 'walk' && e.pt > 4.5) { e.ph = 'tele'; e.pt = 0; bossSummon(e); }
@@ -1193,7 +1185,7 @@
           e.dx = mx; e.dy = my;
           if (e.pt > 0.8) { e.ph = 'dash'; e.pt = 0; }
         } else if (e.ph === 'dash') {
-          mx = e.dx; my = e.dy; spd = 300;
+          mx = e.dx; my = e.dy; spd = 250;
           if (e.pt > 0.9) { e.ph = 'walk'; e.pt = 0; }
         }
       } else if (t.weave) { // flyers wobble sideways
@@ -1278,7 +1270,7 @@
     if (weapon.timer <= 0) {
       const target = nearestEnemy(S.range);
       if (target) {
-        const ox = player.x + player.face * 28, oy = player.y - 27;
+        const ox = player.x + player.face * 24, oy = player.y - 27;
         const base = Math.atan2(target.y - target.t.cy - oy, target.x - ox);
         for (let i = 0; i < S.count; i++) fireBolt(ox, oy, base + (i - (S.count - 1) / 2) * 0.2);
         volley++;
@@ -1613,7 +1605,7 @@
     } catch (e) { /* storage unavailable */ }
   }
   function hurt(e, dx, dy) {
-    const dmg = Math.max(1, Math.round(e.t.dmg * (1 + (wave - 1) * 0.08)));
+    const dmg = Math.max(1, Math.round(e.t.dmg * (1 + (wave - 1) * 0.12)));
     hp -= dmg;
     invuln = 0.7; shake = 9; hitFlash = 0.35;
     const d = Math.hypot(dx, dy) || 1;
@@ -1920,7 +1912,7 @@
       ctx.fillStyle = f < 0.3 ? '#ff3a5a' : '#ff7a8a'; ctx.fillRect(bx, by, bw * f, 4);
     }
     // pulsing glow on the staff orb
-    const gx = px + player.face * 28, gy = py - 27 + breathe;
+    const gx = px + player.face * 24, gy = py - 27 + breathe;
     const pulse = 0.75 + Math.sin(clock * 5) * 0.25;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -2527,6 +2519,45 @@
     awaken: id => { aw[id] = true; recalc(); },
     damage: n => { hp -= n; if (hp <= 0) { if (aw.vit && !revived) { revived = true; hp = S.maxHp; invuln = 2.5; shockwave(); } else { hp = 0; gameOver(); } } },
     reset: resetGame,
+    sim: (o = {}) => { // headless bot for balance testing
+      resetGame();
+      if (o.up) for (const k in o.up) up[k] = o.up[k];
+      if (o.aw) for (const k of o.aw) aw[k] = true;
+      recalc(); hp = S.maxHp;
+      const dt = 1 / 60, limit = (o.seconds || 600) * 60;
+      let steps = 0, hits = 0, minHp = hp, w0 = {};
+      while (steps < limit && state !== 'dead') {
+        if (state === 'levelup') {
+          levelupDelay = 0;
+          const pick = o.pick ? o.pick(choices) : Math.floor(Math.random() * choices.length);
+          chooseUpgrade(pick);
+          continue;
+        }
+        keys.clear();
+        let vx = 0, vy = 0, near = null, nd = 1e12;
+        for (const e of enemies) {
+          const dx = player.x - e.x, dy = player.y - e.y, d2 = dx * dx + dy * dy;
+          if (d2 < nd) { nd = d2; near = e; }
+          if (d2 < (o.flee || 120) ** 2) { const w = 1 / (d2 + 300); vx += dx * w; vy += dy * w; }
+        }
+        const flee = Math.hypot(vx, vy) > 1e-4;
+        if (!flee) {
+          let bg = null, bd = 380 * 380;
+          for (const g of gems) { const d = (g.x - player.x) ** 2 + (g.y - player.y) ** 2; if (d < bd) { bd = d; bg = g; } }
+          for (const c of chests) { bg = c; break; }
+          if (bg) { const dx = bg.x - player.x, dy = bg.y - player.y, d = Math.hypot(dx, dy) || 1; vx += dx / d * 0.01; vy += dy / d * 0.01; }
+          else if (near && nd > 170 * 170) { const dx = near.x - player.x, dy = near.y - player.y, d = Math.hypot(dx, dy) || 1; vx += dx / d * 0.01; vy += dy / d * 0.01; }
+        }
+        if (vx > 0.0006) keys.add('d'); else if (vx < -0.0006) keys.add('a');
+        if (vy > 0.0006) keys.add('s'); else if (vy < -0.0006) keys.add('w');
+        const h0 = hp;
+        update(dt); steps++;
+        if (hp < h0 - 1) hits++;
+        minHp = Math.min(minHp, hp);
+      }
+      keys.clear();
+      return { dead: state === 'dead', wave, time: Math.round(time), level, kills, hits, minHp: Math.round(minHp), up: JSON.stringify(up), aw: Object.keys(aw).filter(k => aw[k]).join(',') };
+    },
     iconSheet: (x, c) => { UPGRADES.forEach((u, i) => { const px = 50 + (i % 6) * 100, py = 50 + Math.floor(i / 6) * 100; hexPath(x, px, py, 38); x.fillStyle = '#0a1220'; x.fill(); x.strokeStyle = u.color; x.lineWidth = 2; x.stroke(); drawSkillIcon(x, u.id, px, py, 24, u.color); }); return c.toDataURL('image/png'); },
     heroSheet: (x, c) => { for (let i = 0; i < 4; i++) x.drawImage(playerFrames[i], 10 + i * 220, 10, PW * 3.4, PH * 3.4); return c.toDataURL('image/png'); },
     sheet: () => { const T = ENEMY_TYPES.concat([BOSS_TYPE]); const c = document.createElement('canvas'); c.width = 1200; c.height = 780; const x = c.getContext('2d'); x.fillStyle = '#5bab52'; x.fillRect(0, 0, 1200, 780); x.drawImage(playerFrames[1], 10, 10, PW * 3, PH * 3); let px = 220, py = 10; for (const t of T) { if (t.boss) continue; const w = t.w * 2, h = t.h * 2; if (px + w > 1190) { px = 220; py += 200; } x.drawImage(t.spr[0], px, py, w, h); px += w + 6; } x.drawImage(BOSS_TYPE.spr[0], 10, 280, 320, 320); return c.toDataURL('image/png'); },
