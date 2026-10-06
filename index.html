@@ -8,7 +8,7 @@
   html, body {
     margin: 0;
     height: 100%;
-    background: #111;
+    background: #2f5d3a;
     overflow: hidden;
     overscroll-behavior: none;
     touch-action: none;
@@ -103,50 +103,261 @@
   }
 
   // ---------- World ----------
-  const player = { x: 0, y: 0, r: 14, speed: 220 };
+  const player = { x: 0, y: 0, r: 14, speed: 220, face: 1, walk: 0 };
   const cam = { x: 0, y: 0 };
-  const GRID = 64;
+  const TILE = 64;
+  let time = 0;
+
+  // deterministic hash -> [0,1)
+  function hash(x, y, s) {
+    let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
+
+  // ---------- Enemies ----------
+  const ENEMY_TYPES = [
+    { name: 'slime', r: 12, speed: 55,  color: '#7bd36b', dark: '#3f8f43' },
+    { name: 'bat',   r: 10, speed: 95,  color: '#9b6bd6', dark: '#5a3a8c' },
+    { name: 'ghoul', r: 15, speed: 70,  color: '#d6735f', dark: '#8c3b2e' },
+  ];
+  const enemies = [];
+  const MAX_ENEMIES = 120;
+  let spawnTimer = 0;
+
+  function spawnEnemy() {
+    if (enemies.length >= MAX_ENEMIES) return;
+    const ang = Math.random() * Math.PI * 2;
+    const dist = Math.hypot(W, H) / 2 + 60;
+    const roll = Math.random();
+    const t = roll < 0.6 ? ENEMY_TYPES[0] : roll < 0.85 ? ENEMY_TYPES[1] : ENEMY_TYPES[2];
+    enemies.push({
+      t, x: player.x + Math.cos(ang) * dist, y: player.y + Math.sin(ang) * dist,
+      phase: Math.random() * 6.28, face: 1,
+    });
+  }
+
+  function updateEnemies(dt) {
+    spawnTimer -= dt;
+    // spawn gets faster over time
+    const interval = Math.max(0.25, 1.2 - time * 0.01);
+    while (spawnTimer <= 0) { spawnEnemy(); spawnTimer += interval; }
+
+    for (const e of enemies) {
+      const dx = player.x - e.x, dy = player.y - e.y;
+      const d = Math.hypot(dx, dy) || 1;
+      e.x += dx / d * e.t.speed * dt;
+      e.y += dy / d * e.t.speed * dt;
+      if (Math.abs(dx) > 2) e.face = dx > 0 ? 1 : -1;
+    }
+    // soft separation so enemies do not stack into one blob
+    for (let i = 0; i < enemies.length; i++) {
+      const a = enemies[i];
+      for (let j = i + 1; j < enemies.length; j++) {
+        const b = enemies[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const min = a.t.r + b.t.r;
+        if (Math.abs(dx) > min || Math.abs(dy) > min) continue;
+        const d = Math.hypot(dx, dy);
+        if (d > 0 && d < min) {
+          const push = (min - d) / 2 / d;
+          a.x -= dx * push; a.y -= dy * push;
+          b.x += dx * push; b.y += dy * push;
+        }
+      }
+    }
+    // despawn enemies that got left far behind
+    const far = Math.hypot(W, H) + 400;
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      if (Math.hypot(enemies[i].x - player.x, enemies[i].y - player.y) > far) enemies.splice(i, 1);
+    }
+  }
 
   function update(dt) {
+    time += dt;
     const v = getInput();
     player.x += v.x * player.speed * dt;
     player.y += v.y * player.speed * dt;
-    // player always stays at screen center; camera follows
+    if (v.x > 0.1) player.face = 1; else if (v.x < -0.1) player.face = -1;
+    player.walk = (v.x || v.y) ? player.walk + dt * 12 : 0;
     cam.x = player.x;
     cam.y = player.y;
+    updateEnemies(dt);
   }
 
-  function drawGrid() {
+  // ---------- Background: procedural grass field ----------
+  const GRASS = ['#2f5d3a', '#336640', '#2c5836', '#386b44'];
+  function drawBackground() {
     const left = cam.x - W / 2, top = cam.y - H / 2;
-    const startX = Math.floor(left / GRID) * GRID;
-    const startY = Math.floor(top / GRID) * GRID;
-    ctx.strokeStyle = '#2a2f3a';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let x = startX; x <= left + W + GRID; x += GRID) {
-      const sx = Math.round(x - left) + 0.5;
-      ctx.moveTo(sx, 0); ctx.lineTo(sx, H);
+    const tx0 = Math.floor(left / TILE), ty0 = Math.floor(top / TILE);
+    const tx1 = Math.floor((left + W) / TILE), ty1 = Math.floor((top + H) / TILE);
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) {
+        const sx = Math.round(tx * TILE - left), sy = Math.round(ty * TILE - top);
+        ctx.fillStyle = GRASS[Math.floor(hash(tx, ty, 1) * GRASS.length)];
+        ctx.fillRect(sx, sy, TILE + 1, TILE + 1);
+        // darker patches
+        if (hash(tx, ty, 2) < 0.18) {
+          ctx.fillStyle = 'rgba(10,40,25,0.22)';
+          ctx.beginPath();
+          ctx.ellipse(sx + 16 + hash(tx, ty, 3) * 32, sy + 16 + hash(tx, ty, 4) * 32,
+            18 + hash(tx, ty, 5) * 14, 12 + hash(tx, ty, 6) * 10, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // grass tufts
+        const n = 2 + Math.floor(hash(tx, ty, 7) * 3);
+        ctx.strokeStyle = 'rgba(150,215,130,0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const gx = sx + hash(tx, ty, 10 + i) * (TILE - 8) + 4;
+          const gy = sy + hash(tx, ty, 20 + i) * (TILE - 8) + 6;
+          ctx.moveTo(gx - 3, gy); ctx.lineTo(gx - 4, gy - 6);
+          ctx.moveTo(gx, gy); ctx.lineTo(gx, gy - 8);
+          ctx.moveTo(gx + 3, gy); ctx.lineTo(gx + 4, gy - 6);
+        }
+        ctx.stroke();
+        // flowers and stones
+        const r = hash(tx, ty, 30);
+        const px = sx + 10 + hash(tx, ty, 31) * (TILE - 20);
+        const py = sy + 10 + hash(tx, ty, 32) * (TILE - 20);
+        if (r < 0.12) {
+          ctx.fillStyle = ['#f5e56b', '#f08fb0', '#ffffff', '#9ec5ff'][Math.floor(hash(tx, ty, 33) * 4)];
+          for (let k = 0; k < 4; k++) {
+            const a = k * Math.PI / 2;
+            ctx.beginPath();
+            ctx.arc(px + Math.cos(a) * 3, py + Math.sin(a) * 3, 2.2, 0, 6.3);
+            ctx.fill();
+          }
+          ctx.fillStyle = '#e8a53a';
+          ctx.beginPath(); ctx.arc(px, py, 1.8, 0, 6.3); ctx.fill();
+        } else if (r < 0.19) {
+          ctx.fillStyle = 'rgba(0,0,0,0.25)';
+          ctx.beginPath(); ctx.ellipse(px + 1, py + 4, 9, 4, 0, 0, 6.3); ctx.fill();
+          ctx.fillStyle = '#8a8f98';
+          ctx.beginPath(); ctx.ellipse(px, py, 8, 6, 0, 0, 6.3); ctx.fill();
+          ctx.fillStyle = '#aab0b8';
+          ctx.beginPath(); ctx.ellipse(px - 2, py - 2, 4, 2.5, 0, 0, 6.3); ctx.fill();
+        }
+      }
     }
-    for (let y = startY; y <= top + H + GRID; y += GRID) {
-      const sy = Math.round(y - top) + 0.5;
-      ctx.moveTo(0, sy); ctx.lineTo(W, sy);
-    }
-    ctx.stroke();
   }
 
+  // ---------- Drawing: characters ----------
+  function shadow(x, y, rx) {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, rx * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Player: little wizard "Mikan" with an orange hat
   function drawPlayer() {
     const cx = W / 2, cy = H / 2;
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    const bob = Math.sin(player.walk) * 2;
+    const f = player.face;
+    shadow(cx, cy + 16, 13);
+    ctx.save();
+    ctx.translate(cx, cy + bob);
+    ctx.scale(f, 1);
+    // cape
+    ctx.fillStyle = '#e8702a';
     ctx.beginPath();
-    ctx.ellipse(cx, cy + player.r * 0.9, player.r * 0.9, player.r * 0.4, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#4fc3f7';
-    ctx.strokeStyle = '#e1f5fe';
-    ctx.lineWidth = 2;
+    ctx.moveTo(-11, -2); ctx.lineTo(11, -2); ctx.lineTo(13, 15); ctx.lineTo(-13, 15);
+    ctx.closePath(); ctx.fill();
+    // belt
+    ctx.fillStyle = '#7a3b14';
+    ctx.fillRect(-11, 5, 22, 3);
+    // head
+    ctx.fillStyle = '#ffd9b0';
+    ctx.beginPath(); ctx.arc(0, -8, 9, 0, Math.PI * 2); ctx.fill();
+    // eye
+    ctx.fillStyle = '#2a1a10';
+    ctx.beginPath(); ctx.arc(4, -8, 1.8, 0, Math.PI * 2); ctx.fill();
+    // hat
+    ctx.fillStyle = '#f6a21e';
     ctx.beginPath();
-    ctx.arc(cx, cy, player.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    ctx.moveTo(-12, -13); ctx.lineTo(12, -13); ctx.lineTo(3, -34); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#c9780d';
+    ctx.fillRect(-12, -15, 24, 4);
+    // leaf on hat
+    ctx.fillStyle = '#5fbf4a';
+    ctx.beginPath(); ctx.ellipse(6, -33, 5, 2.5, -0.6, 0, Math.PI * 2); ctx.fill();
+    // feet
+    ctx.fillStyle = '#4a2a14';
+    const step = Math.sin(player.walk) * 3;
+    ctx.fillRect(-8 + step, 14, 6, 4);
+    ctx.fillRect(2 - step, 14, 6, 4);
+    ctx.restore();
+  }
+
+  function drawEnemy(e, sx, sy) {
+    const t = e.t;
+    const w = Math.sin(time * 6 + e.phase);
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.scale(e.face, 1);
+    if (t.name === 'slime') {
+      shadow(0, t.r * 0.8, t.r);
+      const sq = 1 + w * 0.08;
+      ctx.fillStyle = t.color;
+      ctx.beginPath();
+      ctx.ellipse(0, 2, t.r * (2 - sq), t.r * sq * 0.9, 0, Math.PI, 0);
+      ctx.lineTo(t.r * (2 - sq), 8); ctx.lineTo(-t.r * (2 - sq), 8);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = t.dark; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(-3, -2, 3, 0, 6.3); ctx.arc(5, -2, 3, 0, 6.3); ctx.fill();
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath(); ctx.arc(-2, -2, 1.4, 0, 6.3); ctx.arc(6, -2, 1.4, 0, 6.3); ctx.fill();
+    } else if (t.name === 'bat') {
+      shadow(0, t.r + 8, t.r * 0.9);
+      const y = -6 + w * 3;
+      const flap = w * 7;
+      ctx.fillStyle = t.dark;
+      ctx.beginPath();
+      ctx.moveTo(-3, y); ctx.lineTo(-17, y - 6 - flap); ctx.lineTo(-11, y + 2); ctx.lineTo(-7, y + 8);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(3, y); ctx.lineTo(17, y - 6 - flap); ctx.lineTo(11, y + 2); ctx.lineTo(7, y + 8);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = t.color;
+      ctx.beginPath(); ctx.arc(0, y + 1, 8, 0, 6.3); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-6, y - 5); ctx.lineTo(-4, y - 12); ctx.lineTo(-1, y - 6);
+      ctx.moveTo(6, y - 5); ctx.lineTo(4, y - 12); ctx.lineTo(1, y - 6); ctx.fill();
+      ctx.fillStyle = '#ffe36b';
+      ctx.beginPath(); ctx.arc(-3, y, 1.8, 0, 6.3); ctx.arc(3, y, 1.8, 0, 6.3); ctx.fill();
+    } else {
+      shadow(0, t.r + 2, t.r);
+      const y = w * 1.5;
+      ctx.fillStyle = t.dark;
+      ctx.fillRect(-10, 2 + y, 20, 14);
+      ctx.fillStyle = t.color;
+      ctx.beginPath(); ctx.arc(0, -3 + y, 12, 0, 6.3); ctx.fill();
+      ctx.fillStyle = '#1a0d0d';
+      ctx.beginPath(); ctx.arc(-4, -4 + y, 2.6, 0, 6.3); ctx.arc(5, -4 + y, 2.6, 0, 6.3); ctx.fill();
+      ctx.fillRect(-4, 3 + y, 9, 2);
+      ctx.fillStyle = '#f2ead8';
+      ctx.beginPath(); ctx.moveTo(-9, -12 + y); ctx.lineTo(-6, -20 + y); ctx.lineTo(-3, -13 + y); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(9, -12 + y); ctx.lineTo(6, -20 + y); ctx.lineTo(3, -13 + y); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawEnemies() {
+    const left = cam.x - W / 2, top = cam.y - H / 2;
+    const list = enemies.filter(e => {
+      const sx = e.x - left, sy = e.y - top;
+      return sx > -40 && sx < W + 40 && sy > -40 && sy < H + 40;
+    });
+    // draw the player among enemies by y order
+    list.sort((a, b) => a.y - b.y);
+    let playerDrawn = false;
+    for (const e of list) {
+      if (!playerDrawn && e.y > player.y) { drawPlayer(); playerDrawn = true; }
+      drawEnemy(e, e.x - left, e.y - top);
+    }
+    if (!playerDrawn) drawPlayer();
   }
 
   function drawStick() {
@@ -156,13 +367,13 @@
     const m = Math.min(d, STICK_RADIUS);
     const kx = stick.ox + dx / d * m, ky = stick.oy + dy / d * m;
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(stick.ox, stick.oy, STICK_RADIUS, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.beginPath();
     ctx.arc(kx, ky, 26, 0, Math.PI * 2);
     ctx.fill();
@@ -170,10 +381,8 @@
 
   function render() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#1a1d24';
-    ctx.fillRect(0, 0, W, H);
-    drawGrid();
-    drawPlayer();
+    drawBackground();
+    drawEnemies();
     drawStick();
   }
 
