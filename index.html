@@ -80,15 +80,39 @@
     fn(g);
     return c;
   }
-  function silhouette(src) {
+  function silhouette(src, color) {
     const c = document.createElement('canvas');
     c.width = src.width; c.height = src.height;
     const g = c.getContext('2d');
     g.drawImage(src, 0, 0);
     g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = '#fff';
+    g.fillStyle = color || '#fff';
     g.fillRect(0, 0, c.width, c.height);
     return c;
+  }
+  // unify every character: light from the top-left, a cool shade on the far side, and a dark sticker outline
+  function finish(src) {
+    const g = src.getContext('2d');
+    g.save();
+    g.globalCompositeOperation = 'source-atop';
+    const gr = g.createLinearGradient(0, 0, src.width, src.height);
+    gr.addColorStop(0, 'rgba(255,248,230,0.22)');
+    gr.addColorStop(0.45, 'rgba(255,255,255,0)');
+    gr.addColorStop(1, 'rgba(20,0,50,0.30)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, src.width, src.height);
+    g.restore();
+    const sil = silhouette(src, '#150a22');
+    const out = document.createElement('canvas');
+    out.width = src.width; out.height = src.height;
+    const o = out.getContext('2d');
+    const px = 3;
+    for (let i = 0; i < 12; i++) {
+      const a = i / 12 * TAU;
+      o.drawImage(sil, Math.cos(a) * px, Math.sin(a) * px);
+    }
+    o.drawImage(src, 0, 0);
+    return out;
   }
   function lg(g, x0, y0, x1, y1, stops) {
     const gr = g.createLinearGradient(x0, y0, x1, y1);
@@ -345,6 +369,139 @@
   }
 
   // =====================================================================
+  // Ground decals (dirt, pond, flower meadow, moss), cloud shadows, light motes
+  // =====================================================================
+  function soft(g, cx, cy, rx, ry, rgb, a) {
+    g.save(); g.translate(cx, cy); g.scale(1, ry / rx);
+    g.fillStyle = rg(g, 0, 0, 0, 0, 0, rx, [[0, `rgba(${rgb},${a})`], [0.6, `rgba(${rgb},${a * 0.8})`], [1, `rgba(${rgb},0)`]]);
+    g.beginPath(); g.arc(0, 0, rx, 0, TAU); g.fill();
+    g.restore();
+  }
+  function bladesAround(g, R, cx, cy, rx, ry, n) {
+    const cols = ['#2f7a3a', '#4aa352', '#68c068'];
+    g.lineCap = 'round';
+    for (let i = 0; i < n; i++) {
+      const a = R() * TAU, x = cx + Math.cos(a) * rx * (0.85 + R() * 0.3), y = cy + Math.sin(a) * ry * (0.85 + R() * 0.3);
+      const h = 5 + R() * 6, l = (R() - 0.5) * 4;
+      g.strokeStyle = cols[i % 3]; g.lineWidth = 1.4;
+      g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l * 0.3, y - h * 0.6, x + l, y - h); g.stroke();
+    }
+  }
+  const DECALS = [
+    { w: 220, h: 130, s: mk(220, 130, g => {            // worn dirt patch
+      const R = rng(7);
+      for (let i = 0; i < 9; i++) soft(g, 110 + (R() - 0.5) * 120, 65 + (R() - 0.5) * 44, 32 + R() * 24, 24 + R() * 14, '112,84,52', 0.62);
+      for (let i = 0; i < 6; i++) soft(g, 110 + (R() - 0.5) * 90, 65 + (R() - 0.5) * 36, 22 + R() * 14, 14 + R() * 8, '150,118,76', 0.5);
+      for (let i = 0; i < 14; i++) ell(g, 40 + R() * 140, 36 + R() * 58, 1.5 + R() * 2, 1 + R(), R() < 0.5 ? 'rgba(170,165,150,0.8)' : 'rgba(70,52,30,0.7)');
+      bladesAround(g, R, 110, 65, 78, 40, 46);
+    }) },
+    { w: 240, h: 150, s: mk(240, 150, g => {            // pond
+      const R = rng(11);
+      soft(g, 120, 78, 112, 62, '66,52,34', 0.7);
+      g.beginPath(); g.ellipse(120, 76, 88, 48, 0, 0, TAU);
+      g.fillStyle = lg(g, 0, 28, 0, 124, [[0, '#8fe0e8'], [0.5, '#3f9ab8'], [1, '#1f5f82']]); g.fill();
+      g.strokeStyle = '#1a4256'; g.lineWidth = 2.5; g.stroke();
+      g.save(); g.beginPath(); g.ellipse(120, 76, 86, 46, 0, 0, TAU); g.clip();
+      g.fillStyle = 'rgba(255,255,255,0.18)'; g.beginPath(); g.ellipse(95, 52, 50, 14, -0.2, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1.5;
+      for (const [x, y, w] of [[85, 70, 22], [130, 88, 28], [150, 62, 18], [100, 100, 20]]) { g.beginPath(); g.ellipse(x, y, w, w * 0.28, 0, 0, TAU); g.stroke(); }
+      g.restore();
+      for (const [x, y, r] of [[150, 90, 11], [78, 92, 9], [168, 70, 8]]) {
+        g.save(); g.translate(x, y); g.scale(1, 0.55);
+        g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, r, 0.35, TAU - 0.35); g.closePath();
+        g.fillStyle = '#4fae52'; g.fill(); g.strokeStyle = '#1f6a2a'; g.lineWidth = 1.5; g.stroke(); g.restore();
+      }
+      ell(g, 150, 88, 3, 2, '#ff9ec0'); ell(g, 150, 87, 1.2, 0.8, '#fff3a0');
+      for (const [x, y] of [[40, 90], [48, 98], [196, 82], [204, 90], [182, 112]]) {
+        g.strokeStyle = '#3a7a3a'; g.lineWidth = 1.8; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x + (x < 120 ? -2 : 2), y - 18); g.stroke();
+        ell(g, x + (x < 120 ? -2 : 2), y - 19, 2, 5, '#7a4a28');
+      }
+      bladesAround(g, R, 120, 76, 100, 54, 40);
+    }) },
+    { w: 220, h: 140, s: mk(220, 140, g => {            // flower meadow
+      const R = rng(19);
+      for (let i = 0; i < 7; i++) soft(g, 110 + (R() - 0.5) * 120, 70 + (R() - 0.5) * 50, 34 + R() * 20, 22 + R() * 12, '96,176,88', 0.5);
+      const cols = ['#ff8fb8', '#ffffff', '#ffd23f', '#8fb8ff', '#ff9a6a'];
+      for (let i = 0; i < 80; i++) {
+        const x = 30 + R() * 160, y = 26 + R() * 90, c = cols[Math.floor(R() * cols.length)];
+        for (let k = 0; k < 5; k++) { const a = k * TAU / 5; ell(g, x + Math.cos(a) * 2, y + Math.sin(a) * 2, 1.5, 1.5, c); }
+        ell(g, x, y, 1.1, 1.1, '#ffe68a');
+      }
+      bladesAround(g, R, 110, 70, 80, 46, 40);
+    }) },
+    { w: 200, h: 120, s: mk(200, 120, g => {            // dark moss / shade
+      const R = rng(23);
+      for (let i = 0; i < 8; i++) soft(g, 100 + (R() - 0.5) * 100, 60 + (R() - 0.5) * 40, 30 + R() * 22, 20 + R() * 12, '12,52,30', 0.34);
+      for (let i = 0; i < 18; i++) ell(g, 40 + R() * 120, 30 + R() * 60, 2 + R() * 2, 1.4, 'rgba(120,200,110,0.55)');
+    }) },
+  ];
+  const DCELL = 360;
+  function decalAt(cx, cy) {
+    if (hash(cx, cy, 201) > 0.55) return null;
+    const x = (cx + 0.2 + 0.6 * hash(cx, cy, 202)) * DCELL, y = (cy + 0.2 + 0.6 * hash(cx, cy, 203)) * DCELL;
+    const r = hash(cx, cy, 204);
+    const k = r < 0.28 ? 0 : r < 0.46 ? 1 : r < 0.76 ? 2 : 3;
+    if (k === 1 && x * x + y * y < 200 * 200) return null;
+    return { k, x, y };
+  }
+  const cloudTex = mk(512, 512, g => {
+    const R = rng(31);
+    for (let i = 0; i < 9; i++) {
+      const x = R() * 512, y = R() * 512, r = 90 + R() * 80;
+      for (const ox of [0, 512, -512]) for (const oy of [0, 512, -512]) {
+        const px = x + ox, py = y + oy;
+        if (px < -r || px > 512 + r || py < -r || py > 512 + r) continue;
+        g.fillStyle = rg(g, px, py, 0, px, py, r, [[0, 'rgba(6,28,18,0.55)'], [1, 'rgba(6,28,18,0)']]);
+        g.fillRect(px - r, py - r, r * 2, r * 2);
+      }
+    }
+  });
+  const motes = Array.from({ length: 28 }, () => ({ x: Math.random(), y: Math.random(), vx: 6 + Math.random() * 10, ph: Math.random() * TAU, r: 1 + Math.random() * 1.6 }));
+  function drawAmbient() {
+    // slow cloud shadows drifting over the field
+    ctx.globalAlpha = 0.2;
+    const ox = (((-camL * 0.92 + clock * 14) % 512) + 512) % 512, oy = (((-camT * 0.92 + clock * 5) % 512) + 512) % 512;
+    for (let x = ox - 512; x < W; x += 512) for (let y = oy - 512; y < H; y += 512) ctx.drawImage(cloudTex, x, y, 512, 512);
+    ctx.globalAlpha = 1;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    // warm sunlight from the top-left
+    const sg = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.max(W, H) * 1.1);
+    sg.addColorStop(0, 'rgba(255,226,150,0.16)');
+    sg.addColorStop(1, 'rgba(255,226,150,0)');
+    ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H);
+    // drifting pollen / light motes
+    for (const m of motes) {
+      const x = ((m.x * (W + 80) + clock * m.vx - camL * 0.6) % (W + 80) + (W + 80)) % (W + 80) - 40;
+      const y = ((m.y * (H + 80) - camT * 0.6 + Math.sin(clock * 0.8 + m.ph) * 14) % (H + 80) + (H + 80)) % (H + 80) - 40;
+      ctx.fillStyle = `rgba(255,244,190,${0.25 + 0.25 * Math.sin(clock * 2 + m.ph)})`;
+      ctx.beginPath(); ctx.arc(x, y, m.r, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+  function drawRune(px, py) {
+    // a faint rotating magic circle under the hero
+    ctx.save();
+    ctx.translate(px, py + 3);
+    ctx.scale(1, 0.4);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,190,90,0.5)';
+    ctx.beginPath(); ctx.arc(0, 0, 30, 0, TAU); ctx.stroke();
+    ctx.rotate(clock * 0.7);
+    ctx.setLineDash([6, 8]);
+    ctx.strokeStyle = 'rgba(255,225,150,0.5)';
+    ctx.beginPath(); ctx.arc(0, 0, 24, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(255,200,110,0.4)'; ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) { const a = i * TAU * 2 / 5 - Math.PI / 2; ctx.lineTo(Math.cos(a) * 22, Math.sin(a) * 22); }
+    ctx.closePath(); ctx.stroke();
+    ctx.restore();
+  }
+
+  // =====================================================================
   // Player sprite (little wizard "Mikan"), 4 walk frames
   // =====================================================================
   const PW = 64, PH = 84, PAX = 32, PAY = 74;
@@ -385,8 +542,6 @@
     g.beginPath(); g.moveTo(47, 30); g.lineTo(47, 68); g.stroke();
     g.strokeStyle = '#9a6a3a'; g.lineWidth = 1.2;
     g.beginPath(); g.moveTo(46.2, 32); g.lineTo(46.2, 66); g.stroke();
-    g.fillStyle = rg(g, 47, 28, 0, 47, 28, 12, [[0, 'rgba(255,230,140,0.9)'], [1, 'rgba(255,150,40,0)']]);
-    g.fillRect(34, 15, 26, 26);
     ell(g, 47, 28, 4.2, 4.2, rg(g, 46, 27, 0.5, 47, 28, 5, [[0, '#fffbe0'], [1, '#ff9a1f']]), '#8a4a0a', 1);
     // arm / hand
     g.beginPath(); g.moveTo(39, 41); g.quadraticCurveTo(46, 44, 47, 49); g.lineWidth = 5.5; g.strokeStyle = line; g.stroke();
@@ -425,7 +580,7 @@
     g.restore();
     g.restore();
   }
-  const playerFrames = [0, 1, 2, 3].map(i => mk(PW, PH, g => drawWizard(g, i)));
+  const playerFrames = [0, 1, 2, 3].map(i => finish(mk(PW, PH, g => drawWizard(g, i))));
 
   // =====================================================================
   // Enemy sprites (2 animation frames each)
@@ -661,10 +816,6 @@
   }
   function drawDemon(g, f) {
     const u = f ? -8 : 6, o = f ? 3 : -3;
-    g.save(); g.globalCompositeOperation = 'lighter';
-    g.fillStyle = rg(g, 80, 84, 10, 80, 84, 80, [[0, 'rgba(255,60,120,0.35)'], [1, 'rgba(255,60,120,0)']]);
-    g.fillRect(0, 0, 160, 160);
-    g.restore();
     // wings
     for (const dir of [-1, 1]) {
       g.beginPath();
@@ -747,7 +898,7 @@
     { name: 'slime',    r: 12, cy: 16, hitR: 15, speed: 55,  hp: 20,  xp: 1,  w: 64,  h: 64,  ax: 32, ay: 56, sh: 15, color: '#7bd36b', draw: drawSlime,    minT: 0,   weight: 10 },
     { name: 'bat',      r: 10, cy: 28, hitR: 13, speed: 100, hp: 12,  xp: 1,  w: 64,  h: 64,  ax: 32, ay: 56, sh: 11, color: '#9b6bd6', draw: drawBat,      minT: 15,  weight: 6,  fly: true, weave: 30 },
     { name: 'skeleton', r: 12, cy: 28, hitR: 14, speed: 78,  hp: 34,  xp: 2,  w: 64,  h: 64,  ax: 32, ay: 56, sh: 13, color: '#e6dcc0', draw: drawSkeleton, minT: 35,  weight: 5 },
-    { name: 'wisp',     r: 10, cy: 24, hitR: 14, speed: 115, hp: 20,  xp: 2,  w: 64,  h: 64,  ax: 32, ay: 56, sh: 10, color: '#6ad8ff', draw: drawWisp,     minT: 55,  weight: 4,  fly: true, weave: 55 },
+    { name: 'wisp',     r: 10, cy: 24, hitR: 14, speed: 115, hp: 20,  xp: 2,  w: 64,  h: 64,  ax: 32, ay: 56, sh: 10, color: '#6ad8ff', draw: drawWisp, noStyle: true, minT: 55,  weight: 4,  fly: true, weave: 55 },
     { name: 'ghoul',    r: 15, cy: 26, hitR: 18, speed: 66,  hp: 70,  xp: 4,  w: 64,  h: 64,  ax: 32, ay: 56, sh: 17, color: '#d6735f', draw: drawGhoul,    minT: 75,  weight: 3 },
     { name: 'golem',    r: 24, cy: 46, hitR: 30, speed: 38,  hp: 220, xp: 10, w: 112, h: 112, ax: 56, ay: 100, sh: 30, color: '#9aa3b2', draw: drawGolem,   minT: 110, weight: 1.3 },
     { name: 'spider',   r: 11, cy: 24, hitR: 14, speed: 82,  hp: 26,  xp: 2,  w: 64,  h: 64,  ax: 32, ay: 56, sh: 14, color: '#9a6ad0', draw: drawSpider,   minT: 28,  weight: 5,  burst: true },
@@ -755,11 +906,11 @@
   ];
   const BOSS_TYPE = { name: 'デーモンロード', boss: true, r: 36, cy: 70, hitR: 46, speed: 46, hp: 1400, xp: 10, w: 160, h: 160, ax: 80, ay: 148, sh: 48, color: '#e0508a', draw: drawDemon, armor: 2 };
   for (const t of ENEMY_TYPES) {
-    t.spr = [0, 1].map(f => mk(t.w, t.h, g => t.draw(g, f)));
-    t.flash = t.spr.map(silhouette);
+    t.spr = [0, 1].map(f => { const c = mk(t.w, t.h, g => t.draw(g, f)); return t.noStyle ? c : finish(c); });
+    t.flash = t.spr.map(c => silhouette(c));
   }
-  BOSS_TYPE.spr = [0, 1].map(f => mk(BOSS_TYPE.w, BOSS_TYPE.h, g => BOSS_TYPE.draw(g, f)));
-  BOSS_TYPE.flash = BOSS_TYPE.spr.map(silhouette);
+  BOSS_TYPE.spr = [0, 1].map(f => finish(mk(BOSS_TYPE.w, BOSS_TYPE.h, g => BOSS_TYPE.draw(g, f))));
+  BOSS_TYPE.flash = BOSS_TYPE.spr.map(c => silhouette(c));
 
   // XP gem sprites
   function makeGem(c0, c1, c2) {
@@ -857,6 +1008,8 @@
   const rings = [];
   const blasts = [];
   const chests = [];
+  const missiles = [], lasers = [], bombs = [];
+  const wt = { mis: 0, las: 0, bmb: 0 };
   const MAX_ENEMIES = 130;
   let bossCount = 0, nextBossT = 150, bannerT = 0, auraTimer = 0, volley = 0;
   let spawnTimer = 0;
@@ -865,18 +1018,27 @@
   // ---- progression ----
   let level = 1, xp = 0, pending = 0;
   const xpNeed = lv => 4 + lv * 3 + Math.floor(lv * lv * 0.3);
-  const up = { dmg: 0, rate: 0, count: 0, pierce: 0, move: 0, magnet: 0, range: 0 };
-  const aw = { dmg: false, rate: false, count: false, pierce: false, move: false, magnet: false, range: false };
+  const up = { dmg: 0, rate: 0, count: 0, pierce: 0, move: 0, magnet: 0, range: 0, missile: 0, laser: 0, bomb: 0 };
+  const aw = { dmg: false, rate: false, count: false, pierce: false, move: false, magnet: false, range: false, missile: false, laser: false, bomb: false };
   const S = {};
   function recalc() {
     S.damage = Math.round(10 * (1 + 0.25 * up.dmg));
     S.cooldown = 0.7 * Math.pow(0.85, up.rate) * (aw.rate ? 0.55 : 1);
     S.count = 1 + up.count;
     S.pierce = aw.pierce ? 999 : up.pierce;
-    S.range = 380 * (1 + 0.15 * up.range) * (aw.range ? 1.6 : 1);
+    S.range = 230 * (1 + 0.2 * up.range) * (aw.range ? 1.6 : 1);
     S.magnet = aw.magnet ? 1e6 : 70 * (1 + 0.4 * up.magnet);
     S.xpMul = aw.magnet ? 1.5 : 1;
     player.speed = 220 * (1 + 0.1 * up.move) * (aw.move ? 1.25 : 1);
+    // sub-weapons scale with the damage / cast-speed upgrades too
+    const dm = 1 + 0.2 * up.dmg, cm = Math.pow(0.93, up.rate), cnt = [0, 1, 1, 2, 2, 3];
+    const lv = k => Math.max(0, up[k] - 1);
+    S.mis = { n: cnt[up.missile] * (aw.missile ? 2 : 1) + (aw.missile ? 2 : 0), cd: 2.4 * Math.pow(0.9, lv('missile')) * cm * (aw.missile ? 0.75 : 1),
+      dmg: Math.round(24 * (1 + 0.3 * lv('missile')) * dm), r: aw.missile ? 85 : 58 };
+    S.las = { n: cnt[up.laser], cd: 4 * Math.pow(0.92, lv('laser')) * cm, dur: (0.55 + 0.05 * up.laser) * (aw.laser ? 1.9 : 1),
+      dmg: Math.round(7 * (1 + 0.25 * lv('laser')) * dm), w: aw.laser ? 40 : 24 };
+    S.bmb = { n: cnt[up.bomb], cd: 3.2 * Math.pow(0.92, lv('bomb')) * cm, dmg: Math.round(36 * (1 + 0.3 * lv('bomb')) * dm),
+      r: (80 + 8 * up.bomb) * (aw.bomb ? 1.25 : 1) };
   }
   recalc();
 
@@ -887,7 +1049,10 @@
     { id: 'pierce', icon: '貫', name: '貫通の魔弾', desc: '敵を1体多く貫通',        max: 3, color: '#b58aef', aname: '無限貫通',     adesc: '弾がすべての敵を貫通する' },
     { id: 'move',   icon: '足', name: '軽やかな足', desc: '移動速度 +10%',          max: 4, color: '#6ad8ff', aname: '疾風の結界',   adesc: '周囲の敵を常に切り刻み、移動も加速' },
     { id: 'magnet', icon: '吸', name: '引き寄せ',   desc: '宝石を吸い込む範囲 +40%', max: 4, color: '#7dff8a', aname: '宝石の嵐',     adesc: '全ての宝石を引き寄せ、経験値1.5倍' },
-    { id: 'range',  icon: '射', name: '遠見の瞳',   desc: '射程 +15%',              max: 4, color: '#8fb8ff', aname: '千里眼',       adesc: '射程が大幅に伸び、弾が敵を追尾する' },
+    { id: 'range',  icon: '射', name: '遠見の瞳',   desc: '射程 +20%',              max: 4, color: '#8fb8ff', aname: '千里眼',       adesc: '射程が大幅に伸び、弾が敵を追尾する' },
+    { id: 'missile', icon: '誘', name: 'ミサイル', ndesc: '新スキル: 追尾ミサイルを撃ち、爆発で範囲攻撃', desc: 'ミサイルの威力・本数・連射が強化', max: 5, color: '#ff6a4a', aname: 'ミサイルの嵐', adesc: '大量のミサイルを撃ち、爆発範囲も拡大' },
+    { id: 'laser',  icon: '光', name: 'レーザー', ndesc: '新スキル: 一定間隔で貫通レーザーを照射', desc: 'レーザーの威力・本数・照射時間が強化', max: 5, color: '#6af0ff', aname: 'オーバーレーザー', adesc: '極太のレーザーが回転しながら全方位を薙ぎ払う' },
+    { id: 'bomb',   icon: '爆', name: '爆弾', ndesc: '新スキル: 足元に爆弾を置き、範囲爆発', desc: '爆弾の威力・範囲・個数が強化', max: 5, color: '#ffb040', aname: '連鎖爆弾', adesc: '爆発が小さな爆弾を生み、連鎖して爆発する' },
   ];
   let choices = [];
   let levelupDelay = 0;
@@ -899,6 +1064,11 @@
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     choices = pool.slice(0, 3);
+    // make sure early level-ups offer a sub-weapon until one is picked
+    if (level <= 4 && !UPGRADES.some(u => u.ndesc && up[u.id] > 0)) {
+      const wp = pool.filter(u => u.ndesc);
+      if (wp.length && !choices.some(c => c.ndesc)) choices[0] = wp[Math.floor(Math.random() * wp.length)];
+    }
   }
   let mode = 'level'; // 'level' | 'awaken'
   let pendingAwaken = 0;
@@ -1068,7 +1238,7 @@
     e.flash = 0.09;
     const d = Math.hypot(vx, vy) || 1;
     const k = (e.boss ? 2 : 10) / Math.max(1, e.t.r / 12);
-    e.x += vx / d * k; e.y += vy / d * k;
+    if (!quiet) { e.x += vx / d * k; e.y += vy / d * k; }
     if (!quiet) {
       popups.push({ x: e.x, y: e.y - e.t.cy * 1.7, text: String(dmg), life: 0.55 });
       burst(e.x, e.y - e.t.cy, '#fff4c2', 3);
@@ -1125,7 +1295,7 @@
           b.hit.add(e);
           hitEnemy(e, S.damage, b.vx, b.vy);
           if (aw.dmg) { // explosion
-            blasts.push({ x: b.x, y: b.y, t: 0 });
+            blasts.push({ x: b.x, y: b.y, t: 0, r: 70 });
             for (const o of enemies) {
               if (o === e) continue;
               const ex = o.x - b.x, ey = o.y - o.t.cy - b.y;
@@ -1147,6 +1317,124 @@
         }
       }
     }
+  }
+
+  // ---- sub-weapons: missiles, lasers, bombs ----
+  function explodeAt(x, y, r, dmg, ground) {
+    blasts.push({ x, y, t: 0, r });
+    burst(x, y, '#ffb060', 14);
+    for (const e of enemies) {
+      const dx = e.x - x, dy = (ground ? e.y : e.y - e.t.cy) - y;
+      if (dx * dx + dy * dy < (r + (ground ? e.t.r : e.t.hitR)) ** 2) hitEnemy(e, dmg, dx, dy);
+    }
+  }
+  function updateSkills(dt) {
+    const ox = player.x, oy = player.y - 38;
+    if (up.missile > 0) {
+      wt.mis -= dt;
+      if (wt.mis <= 0) {
+        const list = enemies.filter(e => (e.x - ox) ** 2 + (e.y - player.y) ** 2 < (S.range * 1.5) ** 2)
+          .sort((a, b) => ((a.x - ox) ** 2 + (a.y - oy) ** 2) - ((b.x - ox) ** 2 + (b.y - oy) ** 2));
+        if (list.length) {
+          for (let i = 0; i < S.mis.n; i++) {
+            missiles.push({ x: ox, y: oy, a: -Math.PI / 2 + (Math.random() - 0.5) * 2.6, sp: 120, t: 0, life: 3.2, tr: 0, tg: list[i % list.length] });
+          }
+          wt.mis = S.mis.cd;
+        } else wt.mis = 0.25;
+      }
+    }
+    for (let i = missiles.length - 1; i >= 0; i--) {
+      const m = missiles[i];
+      m.t += dt; m.life -= dt;
+      if (!m.tg || m.tg.hp <= 0 || !enemies.includes(m.tg)) {
+        m.tg = null;
+        let bd = 700 * 700;
+        for (const e of enemies) {
+          const d = (e.x - m.x) ** 2 + (e.y - e.t.cy - m.y) ** 2;
+          if (d < bd) { bd = d; m.tg = e; }
+        }
+      }
+      if (m.tg) {
+        let diff = Math.atan2(m.tg.y - m.tg.t.cy - m.y, m.tg.x - m.x) - m.a;
+        while (diff > Math.PI) diff -= TAU;
+        while (diff < -Math.PI) diff += TAU;
+        const turn = Math.min(1, m.t * 3) * 5 * dt;
+        m.a += Math.max(-turn, Math.min(turn, diff));
+      }
+      m.sp = Math.min(430, m.sp + 520 * dt);
+      m.x += Math.cos(m.a) * m.sp * dt; m.y += Math.sin(m.a) * m.sp * dt;
+      m.tr -= dt;
+      if (m.tr <= 0) {
+        m.tr = 0.025;
+        particles.push({ x: m.x - Math.cos(m.a) * 9, y: m.y - Math.sin(m.a) * 9, vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, life: 0.28, color: '#ff9a40' });
+      }
+      let boom = m.life <= 0;
+      if (!boom) for (const e of enemies) {
+        const dx = e.x - m.x, dy = e.y - e.t.cy - m.y, rr = e.t.hitR + 7;
+        if (dx * dx + dy * dy < rr * rr) { boom = true; break; }
+      }
+      if (boom) { explodeAt(m.x, m.y, S.mis.r, S.mis.dmg, false); missiles.splice(i, 1); }
+    }
+
+    if (up.laser > 0) {
+      wt.las -= dt;
+      if (wt.las <= 0) {
+        const tg = nearestEnemy(S.range * 1.8);
+        if (tg) {
+          const base = Math.atan2(tg.y - tg.t.cy - oy, tg.x - ox);
+          for (let i = 0; i < S.las.n; i++) {
+            lasers.push({ a: base + i * TAU / S.las.n, t: 0, dur: S.las.dur, tick: 0, w: S.las.w, len: 720, rot: aw.laser ? 2.6 : 0 });
+          }
+          wt.las = S.las.cd;
+        } else wt.las = 0.3;
+      }
+    }
+    for (let i = lasers.length - 1; i >= 0; i--) {
+      const L = lasers[i];
+      L.t += dt; L.a += L.rot * dt; L.tick -= dt;
+      if (L.tick <= 0) {
+        L.tick = 0.12;
+        const dx = Math.cos(L.a), dy = Math.sin(L.a);
+        for (const e of enemies) {
+          const ex = e.x - ox, ey = e.y - e.t.cy - oy;
+          const along = ex * dx + ey * dy;
+          if (along > 0 && along < L.len && Math.abs(ex * dy - ey * dx) < L.w / 2 + e.t.hitR * 0.8) hitEnemy(e, S.las.dmg, dx, dy, true);
+        }
+      }
+      if (L.t >= L.dur) lasers.splice(i, 1);
+    }
+
+    if (up.bomb > 0) {
+      wt.bmb -= dt;
+      if (wt.bmb <= 0) {
+        if (enemies.some(e => (e.x - player.x) ** 2 + (e.y - player.y) ** 2 < (S.range * 1.1) ** 2)) {
+          for (let i = 0; i < S.bmb.n; i++) {
+            bombs.push({
+              x: player.x + (i ? (Math.random() - 0.5) * 100 : 0), y: player.y + 4 + (i ? (Math.random() - 0.5) * 70 : 0),
+              t: 0, fuse: 1 + i * 0.15, r: S.bmb.r, dmg: S.bmb.dmg, chain: true,
+            });
+          }
+          wt.bmb = S.bmb.cd;
+        } else wt.bmb = 0.3;
+      }
+    }
+    for (let i = bombs.length - 1; i >= 0; i--) {
+      const b = bombs[i];
+      b.t += dt;
+      if (b.t >= b.fuse) {
+        explodeAt(b.x, b.y - 6, b.r, b.dmg, true);
+        if (aw.bomb && b.chain) {
+          for (let k = 0; k < 3; k++) {
+            const a = Math.random() * TAU;
+            bombs.push({ x: b.x + Math.cos(a) * 70, y: b.y + Math.sin(a) * 50, t: 0, fuse: 0.35 + k * 0.15, r: b.r * 0.6, dmg: Math.round(b.dmg * 0.6), chain: false });
+          }
+        }
+        bombs.splice(i, 1);
+      }
+    }
+  }
+
+  function reap() {
     for (let i = enemies.length - 1; i >= 0; i--) {
       const e = enemies[i];
       if (e.hp <= 0) {
@@ -1233,6 +1521,8 @@
     cam.y = player.y;
     updateEnemies(dt);
     updateWeapon(dt);
+    updateSkills(dt);
+    reap();
     updateGems(dt);
     updateChests();
     updateFx(dt);
@@ -1262,6 +1552,17 @@
   const items = [];
   function drawWorld() {
     items.length = 0;
+    // ground decals
+    const dx0 = Math.floor((camL - 130) / DCELL), dx1 = Math.floor((camL + W + 130) / DCELL);
+    const dy0 = Math.floor((camT - 100) / DCELL), dy1 = Math.floor((camT + H + 100) / DCELL);
+    for (let cy = dy0; cy <= dy1; cy++) {
+      for (let cx = dx0; cx <= dx1; cx++) {
+        const d = decalAt(cx, cy);
+        if (!d) continue;
+        const k = DECALS[d.k];
+        ctx.drawImage(k.s, d.x - camL - k.w / 2, d.y - camT - k.h / 2, k.w, k.h);
+      }
+    }
     // decor
     const cx0 = Math.floor((camL - 110) / CELL), cx1 = Math.floor((camL + W + 110) / CELL);
     const cy0 = Math.floor((camT - 30) / CELL), cy1 = Math.floor((camT + H + 180) / CELL);
@@ -1305,6 +1606,7 @@
     const px = player.x - camL, py = player.y - camT;
     shadow(px, py + 2, 15, 5, 0.32);
     items.push({ y: player.y, t: 2 });
+    for (const b of bombs) items.push({ y: b.y, t: 3, b });
     items.sort((a, b) => a.y - b.y);
 
     for (const it of items) {
@@ -1313,10 +1615,40 @@
         ctx.drawImage(k.s, d.x - camL - k.ax, d.y - camT - k.ay, k.w, k.h);
       } else if (it.t === 1) {
         drawEnemy(it.e);
+      } else if (it.t === 3) {
+        drawBomb(it.b);
       } else {
         drawPlayer();
       }
     }
+  }
+
+  const bombSpr = mk(32, 34, g => {
+    ell(g, 16, 21, 11, 11, rg(g, 12, 16, 1, 16, 21, 14, [[0, '#6a6e7c'], [0.45, '#2a2d38'], [1, '#0c0d12']]), '#05060a', 1.6);
+    ell(g, 12, 16, 3.5, 2.2, 'rgba(255,255,255,0.55)', null, 0, -0.6);
+    rrect(g, 12.5, 7, 7, 5, 1.5); g.fillStyle = '#8a8f9c'; g.fill(); g.strokeStyle = '#05060a'; g.lineWidth = 1.2; g.stroke();
+    g.strokeStyle = '#c9a060'; g.lineWidth = 1.8; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(16, 7); g.quadraticCurveTo(18, 3, 22, 4); g.stroke();
+  });
+  function drawBomb(b) {
+    const sx = b.x - camL, sy = b.y - camT, k = b.t / b.fuse;
+    shadow(sx, sy + 2, 10, 3.5, 0.3);
+    const s = 1 + 0.1 * Math.sin(b.t * (14 + 24 * k));
+    ctx.save();
+    ctx.translate(sx, sy + 4);
+    ctx.scale(s, s);
+    ctx.drawImage(bombSpr, -16, -26, 32, 34);
+    ctx.restore();
+    const blink = (Math.sin(b.t * (14 + 24 * k)) + 1) / 2;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = `rgba(255,${120 + 100 * blink | 0},40,${0.4 + 0.5 * k})`;
+    ctx.beginPath(); ctx.arc(sx + 5 * s, sy - 22 * s + 4, 3 + 3 * blink, 0, TAU); ctx.fill();
+    if (k > 0.45) {
+      ctx.strokeStyle = `rgba(255,110,50,${0.15 + 0.25 * blink})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(sx, sy, b.r, 0, TAU); ctx.stroke();
+    }
+    ctx.restore();
   }
 
   function drawEnemy(e) {
@@ -1326,6 +1658,13 @@
     ctx.save();
     ctx.translate(e.x - camL, e.y - camT + lift);
     ctx.scale(e.face, 1);
+    if (e.boss) {
+      const p = 0.8 + 0.2 * Math.sin(clock * 4);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = rg(ctx, 0, -t.cy, 10, 0, -t.cy, 100, [[0, `rgba(255,60,120,${0.34 * p})`], [1, 'rgba(255,60,120,0)']]);
+      ctx.fillRect(-100, -t.cy - 100, 200, 200);
+      ctx.restore();
+    }
     ctx.drawImage(t.spr[f], -t.ax, -t.ay, t.w, t.h);
     if (e.flash > 0) {
       ctx.globalAlpha = 0.8;
@@ -1336,6 +1675,7 @@
 
   function drawPlayer() {
     const px = player.x - camL, py = player.y - camT;
+    drawRune(px, py);
     const frame = player.moving ? (Math.floor(player.walk) % 4) : 0;
     const breathe = player.moving ? 0 : Math.sin(clock * 3) * 0.8;
     ctx.save();
@@ -1377,12 +1717,29 @@
       ctx.setLineDash([]);
     }
     for (const b of blasts) {
-      const k = b.t / 0.35, r = 20 + 60 * k;
+      const k = b.t / 0.35, r = 20 + ((b.r || 70) - 10) * k;
       const sx = b.x - camL, sy = b.y - camT;
       ctx.fillStyle = rg(ctx, sx, sy, 0, sx, sy, r, [[0, `rgba(255,200,90,${0.7 * (1 - k)})`], [0.6, `rgba(255,90,30,${0.45 * (1 - k)})`], [1, 'rgba(255,60,20,0)']]);
       ctx.beginPath(); ctx.arc(sx, sy, r, 0, TAU); ctx.fill();
       ctx.strokeStyle = `rgba(255,220,150,${1 - k})`; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(sx, sy, r, 0, TAU); ctx.stroke();
+    }
+    for (const L of lasers) {
+      const ox = player.x - camL, oy = player.y - camT - 30;
+      const k = L.t / L.dur, w = L.w * Math.min(1, k * 8, (1 - k) * 8);
+      const ex = ox + Math.cos(L.a) * L.len, ey = oy + Math.sin(L.a) * L.len;
+      ctx.lineCap = 'round';
+      for (const [col, m] of [['rgba(50,170,255,0.30)', 1.9], ['rgba(140,240,255,0.65)', 1], ['rgba(255,255,255,0.95)', 0.38]]) {
+        ctx.strokeStyle = col; ctx.lineWidth = Math.max(0.1, w * m);
+        ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ex, ey); ctx.stroke();
+      }
+      ctx.fillStyle = rg(ctx, ox, oy, 0, ox, oy, w * 1.4 + 6, [[0, 'rgba(255,255,255,0.8)'], [1, 'rgba(80,200,255,0)']]);
+      ctx.fillRect(ox - w * 1.4 - 6, oy - w * 1.4 - 6, w * 2.8 + 12, w * 2.8 + 12);
+    }
+    for (const m of missiles) {
+      const tx = m.x - camL - Math.cos(m.a) * 11, ty = m.y - camT - Math.sin(m.a) * 11;
+      ctx.fillStyle = rg(ctx, tx, ty, 0, tx, ty, 14, [[0, 'rgba(255,230,140,0.9)'], [1, 'rgba(255,100,20,0)']]);
+      ctx.fillRect(tx - 14, ty - 14, 28, 28);
     }
     for (const p of particles) {
       ctx.globalAlpha = Math.min(1, p.life * 3);
@@ -1410,6 +1767,18 @@
     for (const b of bolts) {
       ctx.fillStyle = pal[2];
       ctx.beginPath(); ctx.arc(b.x - camL, b.y - camT, (BOLT_R - 1.5) * size, 0, TAU); ctx.fill();
+    }
+    for (const m of missiles) {
+      ctx.save();
+      ctx.translate(m.x - camL, m.y - camT);
+      ctx.rotate(m.a);
+      poly(ctx, [[-9, -3.2], [-14, -8], [-5, -3.2]], '#d8283a', '#2a0a0a', 1);
+      poly(ctx, [[-9, 3.2], [-14, 8], [-5, 3.2]], '#d8283a', '#2a0a0a', 1);
+      rrect(ctx, -9, -3.4, 16, 6.8, 3);
+      ctx.fillStyle = lg(ctx, 0, -3.4, 0, 3.4, [[0, '#ffffff'], [1, '#9aa0ac']]); ctx.fill();
+      ctx.strokeStyle = '#2a2d38'; ctx.lineWidth = 1.2; ctx.stroke();
+      poly(ctx, [[6, -3.4], [13, 0], [6, 3.4]], '#e8483a', '#2a0a0a', 1);
+      ctx.restore();
     }
     // level-up rings
     for (const r of rings) {
@@ -1596,11 +1965,11 @@
       ctx.fillText(mode === 'awaken' ? '覚醒『' + c.aname + '』' : c.name, tx, r.y + r.h / 2 - 6);
       ctx.font = `13px ${FONT}`;
       ctx.fillStyle = '#b8c8e8';
-      ctx.fillText(mode === 'awaken' ? c.adesc : c.desc, tx, r.y + r.h / 2 + 14);
+      ctx.fillText(mode === 'awaken' ? c.adesc : (up[c.id] === 0 && c.ndesc ? c.ndesc : c.desc), tx, r.y + r.h / 2 + 14);
       ctx.font = `bold 12px ${FONT}`;
       ctx.textAlign = 'right';
       ctx.fillStyle = mode === 'awaken' ? '#ffd24a' : c.color;
-      ctx.fillText(mode === 'awaken' ? 'Lv MAX → 覚醒' : `Lv ${up[c.id]} → ${up[c.id] + 1}`, r.x + r.w - 14, r.y + 22);
+      ctx.fillText(mode === 'awaken' ? 'Lv MAX → 覚醒' : (up[c.id] === 0 && c.ndesc ? 'NEW!' : `Lv ${up[c.id]} → ${up[c.id] + 1}`), r.x + r.w - 14, r.y + 22);
       if (W > 560) {
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
         ctx.fillText(`[${i + 1}]`, r.x + r.w - 14, r.y + r.h - 12);
@@ -1617,6 +1986,7 @@
     drawGround();
     drawWorld();
     drawEffects();
+    drawAmbient();
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, W, H);
     drawHud();
