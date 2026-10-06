@@ -1081,7 +1081,7 @@
   }
 
   // ---- enemies ----
-  const hpScale = () => 1 + 0.26 * (wave - 1) + 0.005 * (wave - 1) ** 2;
+  const hpScale = () => 1 + 0.2 * (wave - 1) + 0.004 * (wave - 1) ** 2;
   const speedScale = () => Math.min(1.4, 1 + 0.02 * (wave - 1));
   function pickType() {
     const wgt = t => t.weight * (wave - t.minW <= 1 ? 1.8 : 1); // favour the newest types
@@ -1115,17 +1115,17 @@
   function startWave(n) {
     wave = n; wavePhase = 'spawn';
     const boss = n % 5 === 0;
-    waveTotal = Math.min(120, boss ? 8 + n * 3 : 12 + n * 5);
-    waveSpawned = 0; spawnTimer = 1.2;
+    waveTotal = Math.min(90, boss ? 8 + n * 2 : 8 + n * 3);
+    waveSpawned = 0; spawnTimer = 0.5;
     waveBannerT = 2.4; waveBannerText = 'WAVE ' + n;
     waveBannerSub = boss ? 'ボスウェーブ' : `敵 ${waveTotal}体`;
     if (boss) spawnBoss();
   }
   function endWave() {
-    wavePhase = 'clear'; interTimer = 5;
+    wavePhase = 'clear'; interTimer = 2.5;
     const heal = Math.round(S.maxHp * 0.25);
     hp = Math.min(S.maxHp, hp + heal);
-    waveBannerT = 2.6; waveBannerText = 'WAVE ' + wave + ' CLEAR'; waveBannerSub = `体力 +${heal}`;
+    waveBannerT = 2.2; waveBannerText = 'WAVE ' + wave + ' CLEAR'; waveBannerSub = `体力 +${heal}`;
     popups.push({ x: player.x, y: player.y - 70, text: '+' + heal, life: 1, color: '#6fffd0' });
     burst(player.x, player.y - 30, '#6fffd0', 24);
     rings.push({ t: 0 });
@@ -1133,7 +1133,7 @@
   function updateWave(dt) {
     if (wavePhase === 'spawn') {
       spawnTimer -= dt;
-      const interval = Math.max(0.28, 1.1 - wave * 0.06);
+      const interval = Math.max(0.2, 0.9 - wave * 0.045);
       const batch = 1 + (wave >= 4 ? 1 : 0) + (wave >= 8 ? 1 : 0);
       while (spawnTimer <= 0 && waveSpawned < waveTotal) {
         let n = 0;
@@ -1179,6 +1179,7 @@
       const dx = player.x - e.x, dy = player.y - e.y;
       const d = Math.hypot(dx, dy) || 1;
       let mx = dx / d, my = dy / d, spd = t.speed * speedScale();
+      if (!e.boss && d > 260) spd *= 1 + Math.min(1.5, (d - 260) / 260); // far-off enemies hurry in, so there is little dead time between waves
       if (e.boss) {
         e.pt += dt;
         if (e.ph === 'walk' && e.pt > 4.5) { e.ph = 'tele'; e.pt = 0; bossSummon(e); }
@@ -1607,7 +1608,7 @@
     } catch (e) { /* storage unavailable */ }
   }
   function hurt(e, dx, dy) {
-    const dmg = Math.max(1, Math.round(e.t.dmg * (1 + (wave - 1) * 0.12)));
+    const dmg = Math.max(1, Math.round(e.t.dmg * (1 + (wave - 1) * 0.1)));
     hp -= dmg;
     invuln = 0.7; shake = 9; hitFlash = 0.35;
     const d = Math.hypot(dx, dy) || 1;
@@ -2527,7 +2528,7 @@
       if (o.aw) for (const k of o.aw) aw[k] = true;
       recalc(); hp = S.maxHp;
       const dt = 1 / 60, limit = (o.seconds || 600) * 60;
-      let steps = 0, hits = 0, minHp = hp, w0 = {};
+      let steps = 0, hits = 0, minHp = hp, lastW = wave; const wtimes = [];
       while (steps < limit && state !== 'dead') {
         if (state === 'levelup') {
           levelupDelay = 0;
@@ -2554,11 +2555,12 @@
         if (vy > 0.0006) keys.add('s'); else if (vy < -0.0006) keys.add('w');
         const h0 = hp;
         update(dt); steps++;
+        if (wave !== lastW) { wtimes.push(+time.toFixed(1)); lastW = wave; }
         if (hp < h0 - 1) hits++;
         minHp = Math.min(minHp, hp);
       }
       keys.clear();
-      return { dead: state === 'dead', wave, time: Math.round(time), level, kills, hits, minHp: Math.round(minHp), up: JSON.stringify(up), aw: Object.keys(aw).filter(k => aw[k]).join(',') };
+      return { wtimes: wtimes.join(','), dead: state === 'dead', wave, time: Math.round(time), level, kills, hits, minHp: Math.round(minHp), up: JSON.stringify(up), aw: Object.keys(aw).filter(k => aw[k]).join(',') };
     },
     iconSheet: (x, c) => { UPGRADES.forEach((u, i) => { const px = 50 + (i % 6) * 100, py = 50 + Math.floor(i / 6) * 100; hexPath(x, px, py, 38); x.fillStyle = '#0a1220'; x.fill(); x.strokeStyle = u.color; x.lineWidth = 2; x.stroke(); drawSkillIcon(x, u.id, px, py, 24, u.color); }); return c.toDataURL('image/png'); },
     heroSheet: (x, c) => { for (let i = 0; i < 4; i++) x.drawImage(playerFrames[i], 10 + i * 220, 10, PW * 3.4, PH * 3.4); return c.toDataURL('image/png'); },
