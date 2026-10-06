@@ -1081,7 +1081,7 @@
   }
 
   // ---- enemies ----
-  const hpScale = () => 1 + 0.2 * (wave - 1) + 0.004 * (wave - 1) ** 2;
+  const hpScale = () => 1 + 0.26 * (wave - 1) + 0.005 * (wave - 1) ** 2;
   const speedScale = () => Math.min(1.4, 1 + 0.02 * (wave - 1));
   function pickType() {
     const wgt = t => t.weight * (wave - t.minW <= 1 ? 1.8 : 1); // favour the newest types
@@ -1115,7 +1115,7 @@
   function startWave(n) {
     wave = n; wavePhase = 'spawn';
     const boss = n % 5 === 0;
-    waveTotal = Math.min(90, boss ? 8 + n * 2 : 8 + n * 3);
+    waveTotal = Math.min(120, boss ? 8 + n * 3 : 12 + n * 5);
     waveSpawned = 0; spawnTimer = 0.5;
     waveBannerT = 2.4; waveBannerText = 'WAVE ' + n;
     waveBannerSub = boss ? 'ボスウェーブ' : `敵 ${waveTotal}体`;
@@ -1133,7 +1133,7 @@
   function updateWave(dt) {
     if (wavePhase === 'spawn') {
       spawnTimer -= dt;
-      const interval = Math.max(0.2, 0.9 - wave * 0.045);
+      const interval = Math.max(0.28, 1.1 - wave * 0.06);
       const batch = 1 + (wave >= 4 ? 1 : 0) + (wave >= 8 ? 1 : 0);
       while (spawnTimer <= 0 && waveSpawned < waveTotal) {
         let n = 0;
@@ -1608,7 +1608,7 @@
     } catch (e) { /* storage unavailable */ }
   }
   function hurt(e, dx, dy) {
-    const dmg = Math.max(1, Math.round(e.t.dmg * (1 + (wave - 1) * 0.1)));
+    const dmg = Math.max(1, Math.round(e.t.dmg * (1 + (wave - 1) * 0.12)));
     hp -= dmg;
     invuln = 0.7; shake = 9; hitFlash = 0.35;
     const d = Math.hypot(dx, dy) || 1;
