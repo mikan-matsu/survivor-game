@@ -958,8 +958,8 @@
     const lv = k => Math.max(0, up[k] - 1);
     S.mis = { n: cnt[up.missile] * (aw.missile ? 2 : 1) + (aw.missile ? 2 : 0), cd: 2.4 * Math.pow(0.9, lv('missile')) * cm * (aw.missile ? 0.75 : 1),
       dmg: Math.round(24 * (1 + 0.3 * lv('missile')) * dm), r: aw.missile ? 85 : 58 };
-    S.las = { chain: [0, 1, 2, 3, 5, 7][up.laser] + (aw.laser ? 4 : 0), n: cnt[up.laser], cd: 4 * Math.pow(0.92, lv('laser')) * cm, dur: (0.55 + 0.05 * up.laser) * (aw.laser ? 1.9 : 1),
-      dmg: Math.round(7 * (1 + 0.25 * lv('laser')) * dm), w: aw.laser ? 40 : 24 };
+    S.las = { chain: [0, 2, 3, 5, 7, 10][up.laser] + (aw.laser ? 8 : 0), n: [0, 3, 3, 4, 4, 5][up.laser] + (aw.laser ? 3 : 0), cd: 4 * Math.pow(0.92, lv('laser')) * cm, dur: (0.55 + 0.05 * up.laser) * (aw.laser ? 1.5 : 1),
+      dmg: Math.round(6 * (1 + 0.25 * lv('laser')) * dm), w: aw.laser ? 34 : 24 };
     S.bmb = { n: cnt[up.bomb], cd: 3.2 * Math.pow(0.92, lv('bomb')) * cm, dmg: Math.round(36 * (1 + 0.3 * lv('bomb')) * dm),
       r: (80 + 8 * up.bomb) * (aw.bomb ? 1.25 : 1) };
   }
@@ -976,7 +976,7 @@
     { id: 'magnet', icon: '吸', name: '引き寄せ',   desc: '宝石を吸い込む範囲 +40%', max: 4, color: '#7dff8a', aname: '宝石の嵐',     adesc: '全ての宝石を引き寄せ、経験値1.5倍' },
     { id: 'range',  icon: '射', name: '遠見の瞳',   desc: '射程 +20%',              max: 4, color: '#8fb8ff', aname: '千里眼',       adesc: '射程が大幅に伸び、弾が敵を追尾する' },
     { id: 'missile', icon: '誘', name: 'ミサイル', ndesc: '新スキル: 追尾ミサイルを撃ち、爆発で範囲攻撃', desc: 'ミサイルの威力・本数・連射が強化', max: 5, color: '#ff6a4a', aname: 'ミサイルの嵐', adesc: '大量のミサイルを撃ち、爆発範囲も拡大' },
-    { id: 'laser',  icon: '光', name: 'レーザー', ndesc: '新スキル: レーザーが敵から敵へ折れ曲がって連鎖する', desc: 'レーザーの威力・連鎖数・照射時間が強化', max: 5, color: '#6af0ff', aname: 'オーバーレーザー', adesc: '極太のレーザーが回転し、連鎖も大幅に増える' },
+    { id: 'laser',  icon: '光', name: 'レーザー', ndesc: '新スキル: 背後から3本のレーザーが別々の敵へ飛び、連鎖する', desc: 'レーザーの威力・本数・連鎖数が強化', max: 5, color: '#6af0ff', aname: 'オーバーレーザー', adesc: 'レーザーがさらに3本増えて太くなり、連鎖も爆発的に増える' },
     { id: 'bomb',   icon: '爆', name: '爆弾', ndesc: '新スキル: 足元に爆弾を置き、範囲爆発', desc: '爆弾の威力・範囲・個数が強化', max: 5, color: '#ffb040', aname: '連鎖爆弾', adesc: '爆発が小さな爆弾を生み、連鎖して爆発する' },
   ];
   let choices = [];
@@ -1311,9 +1311,12 @@
     const t = Math.max(0, Math.min(1, ((px - x1) * vx + (py - y1) * vy) / l2));
     return Math.hypot(px - (x1 + vx * t), py - (y1 + vy * t));
   }
-  // The beam runs straight to the last enemy it touches, then bends from enemy to enemy.
-  function laserGeom(L) {
-    const ox = player.x, oy = player.y - 30;
+  // Lasers leave from directly behind the hero. Each one aims at its own enemy (the nearest one
+  // nobody else has picked), runs through everything on the way, then bends from enemy to enemy,
+  // preferring enemies that no other laser has claimed yet.
+  function laserGeom(L, claimed) {
+    const ox = player.x - player.face * 18, oy = player.y - 34;
+    if (L.tg) L.a = Math.atan2(L.tg.y - L.tg.t.cy - oy, L.tg.x - ox);
     const dx = Math.cos(L.a), dy = Math.sin(L.a);
     const hit = new Set(), targets = [];
     let last = null, best = -1;
@@ -1328,22 +1331,26 @@
     const pts = [[ox, oy], last ? [last.x, last.y - last.t.cy] : [ox + dx * L.len, oy + dy * L.len]];
     let cur = last;
     for (let c = 0; cur && c < S.las.chain; c++) {
-      let nx = null, bd = 200 * 200;
+      let nx = null;
       const cx = cur.x, cy = cur.y - cur.t.cy;
-      for (const e of enemies) {
-        if (hit.has(e)) continue;
-        const d = (e.x - cx) ** 2 + (e.y - e.t.cy - cy) ** 2;
-        if (d < bd) { bd = d; nx = e; }
+      for (let pass = 0; pass < 2 && !nx; pass++) { // pass 0 skips enemies other lasers already claimed
+        let bd = 220 * 220;
+        for (const e of enemies) {
+          if (hit.has(e) || (pass === 0 && claimed.has(e))) continue;
+          const d = (e.x - cx) ** 2 + (e.y - e.t.cy - cy) ** 2;
+          if (d < bd) { bd = d; nx = e; }
+        }
       }
       if (!nx) break;
       const nxx = nx.x, nxy = nx.y - nx.t.cy;
       for (const e of enemies) {
         if (hit.has(e)) continue;
-        if (e === nx || segDist(e.x, e.y - e.t.cy, cx, cy, nxx, nxy) < L.w / 2 + e.t.hitR * 0.8) { hit.add(e); targets.push([e, 0.85]); }
+        if (e === nx || segDist(e.x, e.y - e.t.cy, cx, cy, nxx, nxy) < L.w / 2 + e.t.hitR * 0.8) { hit.add(e); targets.push([e, 0.7]); }
       }
       pts.push([nxx, nxy]);
       cur = nx;
     }
+    for (const e of hit) claimed.add(e);
     L.pts = pts; L.targets = targets;
   }
   function updateSkills(dt) {
@@ -1397,25 +1404,40 @@
     if (up.laser > 0) {
       wt.las -= dt;
       if (wt.las <= 0) {
-        const tg = nearestEnemy(S.range * 1.8);
-        if (tg) {
-          const base = Math.atan2(tg.y - tg.t.cy - oy, tg.x - ox);
+        const range2 = (S.range * 1.8) ** 2;
+        const list = enemies.filter(e => (e.x - player.x) ** 2 + (e.y - player.y) ** 2 < range2)
+          .sort((a, b) => ((a.x - player.x) ** 2 + (a.y - player.y) ** 2) - ((b.x - player.x) ** 2 + (b.y - player.y) ** 2));
+        if (list.length) {
           for (let i = 0; i < S.las.n; i++) {
-            lasers.push({ a: base + i * TAU / S.las.n, t: 0, dur: S.las.dur, tick: 0, w: S.las.w, len: 720, arcs: [], rot: aw.laser ? 2.6 : 0 });
+            lasers.push({ tg: list[i % list.length], a: 0, t: 0, dur: S.las.dur, tick: 0, w: S.las.w, len: 720 });
           }
           wt.las = S.las.cd;
         } else wt.las = 0.3;
       }
     }
-    for (let i = lasers.length - 1; i >= 0; i--) {
-      const L = lasers[i];
-      L.t += dt; L.a += L.rot * dt; L.tick -= dt;
-      laserGeom(L);
-      if (L.tick <= 0) {
-        L.tick = 0.12;
-        for (const [e, m] of L.targets) hitEnemy(e, Math.round(S.las.dmg * m), 0, 0, true);
+    if (lasers.length) {
+      const claimed = new Set();
+      for (const L of lasers) if (L.tg) claimed.add(L.tg);
+      for (let i = lasers.length - 1; i >= 0; i--) {
+        const L = lasers[i];
+        L.t += dt; L.tick -= dt;
+        if (!L.tg || L.tg.hp <= 0 || !enemies.includes(L.tg)) { // lost its target: take the nearest unclaimed enemy
+          let best = null, bd = 1e12, any = null, ad = 1e12;
+          for (const e of enemies) {
+            const d = (e.x - player.x) ** 2 + (e.y - player.y) ** 2;
+            if (d < ad) { ad = d; any = e; }
+            if (!claimed.has(e) && d < bd) { bd = d; best = e; }
+          }
+          L.tg = best || any;
+          if (L.tg) claimed.add(L.tg);
+        }
+        laserGeom(L, claimed);
+        if (L.tick <= 0) {
+          L.tick = 0.12;
+          for (const [e, m] of L.targets) hitEnemy(e, Math.round(S.las.dmg * m), 0, 0, true);
+        }
+        if (L.t >= L.dur) lasers.splice(i, 1);
       }
-      if (L.t >= L.dur) lasers.splice(i, 1);
     }
 
     if (up.bomb > 0) {
@@ -1801,6 +1823,15 @@
     drawRune(px, py);
     const frame = player.moving ? (Math.floor(player.walk) % 4) : 0;
     const breathe = player.moving ? 0 : Math.sin(clock * 3) * 0.8;
+    if (up.laser > 0) { // laser emitter floating behind the hero
+      const ex = px - player.face * 18, ey = py - 34 + breathe, active = lasers.length > 0;
+      const p = 0.65 + 0.35 * Math.sin(clock * 6);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = rg(ctx, ex, ey, 0, ex, ey, active ? 26 : 16, [[0, `rgba(140,245,255,${(active ? 0.9 : 0.45) * p})`], [1, 'rgba(60,200,255,0)']]);
+      ctx.fillRect(ex - 26, ey - 26, 52, 52);
+      ctx.restore();
+      hexPath(ctx, ex, ey, 5.5); ctx.strokeStyle = 'rgba(200,255,255,0.9)'; ctx.lineWidth = 1.4; ctx.stroke();
+    }
     ctx.save();
     ctx.translate(px, py + breathe);
     ctx.scale(player.face, 1);
@@ -1856,7 +1887,6 @@
     for (const L of lasers) {
       const k = L.t / L.dur, w = L.w * Math.min(1, k * 8, (1 - k) * 8);
       const pts = (L.pts || [[0, 0], [Math.cos(L.a) * L.len, Math.sin(L.a) * L.len]]).map(p => [p[0] - camL, p[1] - camT]);
-      pts[0] = [player.x - camL, player.y - camT - 30];
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       for (const [col, m] of [['rgba(50,170,255,0.30)', 1.9], ['rgba(140,240,255,0.65)', 1], ['rgba(255,255,255,0.95)', 0.38]]) {
         ctx.strokeStyle = col; ctx.lineWidth = Math.max(0.1, w * m);
@@ -2342,6 +2372,8 @@
     get phase() { return wavePhase; },
     get hp() { return hp; },
     laserPts: () => lasers.map(l => l.pts && l.pts.map(p => p.map(Math.round))),
+    laserTg: () => lasers.map(l => enemies.indexOf(l.tg)),
+    get enemyCount() { return enemies.length; },
     get state() { return state; },
   };
 
