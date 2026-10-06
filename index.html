@@ -832,6 +832,8 @@
     { name: 'treant',    r: 22, cy: 38, hitR: 26, speed: 42,  hp: 280, xp: 12, w: 88, h: 88, ax: 44, ay: 80, sh: 28, color: '#ffb347', draw: dTreant,     minT: 125, weight: 1.1, armor: 3 },
   ];
   const BOSS_TYPE = { name: 'ムーンイーター', boss: true, r: 36, cy: 70, hitR: 46, speed: 46, hp: 1400, xp: 10, w: 160, h: 160, ax: 80, ay: 148, sh: 48, color: '#ff5aae', draw: dMoonEater, armor: 2 };
+  const MINW = { ooze: 1, bat: 2, spider: 2, bonewalker: 3, ghost: 4, wisp: 4, hound: 5, ghoul: 6, sporeling: 6, knight: 7, reaper: 8, golem: 9, treant: 10 };
+  for (const t of ENEMY_TYPES) t.minW = MINW[t.name] || 1;
   const TOUCH = { ooze: 6, bat: 5, spider: 7, bonewalker: 8, ghost: 8, wisp: 6, hound: 9, ghoul: 12, sporeling: 8, knight: 14, reaper: 12, golem: 22, treant: 24 };
   for (const t of ENEMY_TYPES) t.dmg = TOUCH[t.name] || 8;
   BOSS_TYPE.dmg = 30;
@@ -925,7 +927,9 @@
   const missiles = [], lasers = [], bombs = [];
   const wt = { mis: 0, las: 0, bmb: 0 };
   const MAX_ENEMIES = 130;
-  let bossCount = 0, nextBossT = 150, bannerT = 0, auraTimer = 0, volley = 0;
+  let bossCount = 0, bannerT = 0, auraTimer = 0, volley = 0;
+  let wave = 1, wavePhase = 'spawn', waveTotal = 0, waveSpawned = 0, interTimer = 0;
+  let waveBannerT = 0, waveBannerText = '', waveBannerSub = '';
   let spawnTimer = 0;
   let kills = 0;
 
@@ -1039,31 +1043,76 @@
   }
 
   // ---- enemies ----
+  const hpScale = () => 1 + 0.18 * (wave - 1);
   function pickType() {
+    const wgt = t => t.weight * (wave - t.minW <= 1 ? 1.8 : 1); // favour the newest types
     let total = 0;
-    for (const t of ENEMY_TYPES) if (time >= t.minT) total += t.weight;
+    for (const t of ENEMY_TYPES) if (wave >= t.minW) total += wgt(t);
     let r = Math.random() * total;
     for (const t of ENEMY_TYPES) {
-      if (time < t.minT) continue;
-      r -= t.weight;
+      if (wave < t.minW) continue;
+      r -= wgt(t);
       if (r <= 0) return t;
     }
     return ENEMY_TYPES[0];
   }
+  function ringPos(extra) {
+    const ang = Math.random() * TAU, dist = Math.hypot(W, H) / 2 + extra;
+    return [player.x + Math.cos(ang) * dist, player.y + Math.sin(ang) * dist];
+  }
   function spawnEnemy(near) {
-    if (enemies.length >= MAX_ENEMIES) return;
+    if (enemies.length >= MAX_ENEMIES) return false;
     const ang = Math.random() * TAU;
     const dist = near ? 110 + Math.random() * 120 : Math.hypot(W, H) / 2 + 70;
     const t = pickType();
-    const hp = Math.round(t.hp * (1 + time / 120));
+    const hp = Math.round(t.hp * hpScale());
     enemies.push({
       t, x: player.x + Math.cos(ang) * dist, y: player.y + Math.sin(ang) * dist,
       phase: Math.random() * TAU, face: 1, hp, flash: 0,
     });
+    return true;
+  }
+  // ---- waves ----
+  function startWave(n) {
+    wave = n; wavePhase = 'spawn';
+    const boss = n % 5 === 0;
+    waveTotal = Math.min(90, boss ? 8 + n * 2 : 10 + n * 4);
+    waveSpawned = 0; spawnTimer = 1.2;
+    waveBannerT = 2.4; waveBannerText = 'WAVE ' + n;
+    waveBannerSub = boss ? 'ボスウェーブ' : `敵 ${waveTotal}体`;
+    if (boss) spawnBoss();
+  }
+  function endWave() {
+    wavePhase = 'clear'; interTimer = 5;
+    const heal = Math.round(S.maxHp * 0.25);
+    hp = Math.min(S.maxHp, hp + heal);
+    waveBannerT = 2.6; waveBannerText = 'WAVE ' + wave + ' CLEAR'; waveBannerSub = `体力 +${heal}`;
+    popups.push({ x: player.x, y: player.y - 70, text: '+' + heal, life: 1, color: '#6fffd0' });
+    burst(player.x, player.y - 30, '#6fffd0', 24);
+    rings.push({ t: 0 });
+  }
+  function updateWave(dt) {
+    if (wavePhase === 'spawn') {
+      spawnTimer -= dt;
+      const interval = Math.max(0.28, 1.1 - wave * 0.06);
+      const batch = 1 + (wave >= 4 ? 1 : 0) + (wave >= 8 ? 1 : 0);
+      while (spawnTimer <= 0 && waveSpawned < waveTotal) {
+        let n = 0;
+        for (let b = 0; b < batch && waveSpawned < waveTotal; b++) { if (spawnEnemy(false)) { waveSpawned++; n++; } else break; }
+        spawnTimer += n ? interval : 0.5;
+        if (!n) break;
+      }
+      if (spawnTimer < 0) spawnTimer = 0;
+      if (waveSpawned >= waveTotal && enemies.length === 0) endWave();
+    } else {
+      for (const g of gems) g.mag = true; // sweep up everything between waves
+      interTimer -= dt;
+      if (interTimer <= 0) startWave(wave + 1);
+    }
   }
   function spawnBoss() {
     const ang = Math.random() * TAU, dist = Math.hypot(W, H) / 2 + 120;
-    const hp = Math.round(BOSS_TYPE.hp * (1 + 0.9 * bossCount));
+    const hp = Math.round(BOSS_TYPE.hp * (1 + 0.9 * bossCount) * (1 + 0.04 * (wave - 5)));
     bossCount++;
     bannerT = 3;
     enemies.push({
@@ -1077,16 +1126,13 @@
       const t = ENEMY_TYPES[i % 2 ? 1 : 0];
       enemies.push({
         t, x: e.x + Math.cos(a) * 70, y: e.y + Math.sin(a) * 50,
-        phase: Math.random() * TAU, face: 1, hp: Math.round(t.hp * (1 + time / 120)), flash: 0,
+        phase: Math.random() * TAU, face: 1, hp: Math.round(t.hp * hpScale()), flash: 0,
       });
       burst(e.x + Math.cos(a) * 70, e.y + Math.sin(a) * 50 - 14, '#c050ff', 4);
     }
   }
   function updateEnemies(dt) {
-    spawnTimer -= dt;
-    const interval = Math.max(0.22, 1.0 - time * 0.005);
-    while (spawnTimer <= 0) { spawnEnemy(false); spawnTimer += interval; }
-    if (time >= nextBossT && !enemies.some(e => e.boss)) { spawnBoss(); nextBossT = time + 150; }
+    updateWave(dt);
 
     for (const e of enemies) {
       const t = e.t;
@@ -1142,7 +1188,8 @@
     }
     const far = Math.hypot(W, H) + 400;
     for (let i = enemies.length - 1; i >= 0; i--) {
-      if (!enemies[i].boss && Math.hypot(enemies[i].x - player.x, enemies[i].y - player.y) > far) enemies.splice(i, 1);
+      const e = enemies[i];
+      if (!e.boss && Math.hypot(e.x - player.x, e.y - player.y) > far) { const p = ringPos(70); e.x = p[0]; e.y = p[1]; }
     }
   }
 
@@ -1472,6 +1519,7 @@
       if (blasts[i].t > 0.35) blasts.splice(i, 1);
     }
     bannerT = Math.max(0, bannerT - dt);
+    waveBannerT = Math.max(0, waveBannerT - dt);
   }
 
   // ---- player health, contact damage, game over ----
@@ -1491,12 +1539,12 @@
     burst(player.x, player.y - 30, '#ff4f7a', 30);
     try {
       const best = JSON.parse(localStorage.getItem('hollownight.best') || 'null') || { time: 0, kills: 0 };
-      best.time = Math.max(best.time, Math.floor(time)); best.kills = Math.max(best.kills, kills);
+      best.time = Math.max(best.time, Math.floor(time)); best.kills = Math.max(best.kills, kills); best.wave = Math.max(best.wave || 0, wave);
       localStorage.setItem('hollownight.best', JSON.stringify(best));
     } catch (e) { /* storage unavailable */ }
   }
   function hurt(e, dx, dy) {
-    const dmg = Math.max(1, Math.round(e.t.dmg * (1 + time / 420)));
+    const dmg = Math.max(1, Math.round(e.t.dmg * (1 + (wave - 1) * 0.08)));
     hp -= dmg;
     invuln = 0.7; shake = 9; hitFlash = 0.35;
     const d = Math.hypot(dx, dy) || 1;
@@ -1539,7 +1587,7 @@
     cam.x = 0; cam.y = 0;
     for (const a of [enemies, bolts, gems, particles, popups, rings, blasts, chests, missiles, lasers, bombs, hearts]) a.length = 0;
     wt.mis = wt.las = wt.bmb = 0; weapon.timer = 0;
-    bossCount = 0; nextBossT = 150; bannerT = 0; auraTimer = 0; volley = 0; spawnTimer = 0; kills = 0;
+    bossCount = 0; bannerT = 0; auraTimer = 0; volley = 0; spawnTimer = 0; kills = 0; waveBannerT = 0;
     level = 1; xp = 0; pending = 0; pendingAwaken = 0;
     for (const k in up) up[k] = 0;
     up.bolt = 1;
@@ -1549,6 +1597,7 @@
     recalc();
     hp = S.maxHp;
     stick.active = false;
+    startWave(Number(params.get('w')) || 1);
   }
 
   function update(dt) {
@@ -1981,6 +2030,56 @@
       cx += 31;
     }
 
+    // wave indicator with a progress bar
+    {
+      const total = Math.max(1, waveTotal), left = (waveTotal - waveSpawned) + enemies.length;
+      const prog = wavePhase === 'clear' ? 1 : Math.max(0, Math.min(1, 1 - left / total));
+      const rx = W - bx;
+      spaced(2);
+      tag('WAVE ' + wave, rx, cyc - 2, 'right', 14, '#9ff5e4');
+      spaced(0);
+      tag(wavePhase === 'clear' ? 'CLEAR' : '残り ' + left, rx, cyc + 14, 'right', 11, wavePhase === 'clear' ? '#6fffd0' : '#9fb8d0');
+      const wbw = 110;
+      ctx.fillStyle = 'rgba(8,16,28,0.7)'; ctx.fillRect(rx - wbw, cyc + 19, wbw, 4);
+      ctx.fillStyle = wavePhase === 'clear' ? '#6fffd0' : '#6fe8d4'; ctx.fillRect(rx - wbw, cyc + 19, wbw * prog, 4);
+    }
+
+    // the last few enemies of a wave are pointed out at the screen edge
+    if (wavePhase === 'spawn' && waveSpawned >= waveTotal && enemies.length > 0 && enemies.length <= 3) {
+      for (const e of enemies) {
+        const sx = e.x - camL, sy = e.y - camT;
+        if (sx > 16 && sx < W - 16 && sy > 16 && sy < H - 16) continue;
+        const a = Math.atan2(sy - H / 2, sx - W / 2);
+        const kx = Math.max(30, Math.min(W - 30, W / 2 + Math.cos(a) * 1e4));
+        const ky = Math.max(120, Math.min(H - 30, H / 2 + Math.sin(a) * 1e4));
+        ctx.save(); ctx.translate(kx, ky); ctx.rotate(a);
+        ctx.fillStyle = 'rgba(255,90,140,0.9)';
+        ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-7, -8); ctx.lineTo(-2, 0); ctx.lineTo(-7, 8); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // wave banner
+    if (waveBannerT > 0) {
+      const al = Math.min(1, waveBannerT * 2.5, (2.4 - Math.min(waveBannerT, 2.4)) * 4 + 0.001);
+      ctx.globalAlpha = Math.max(0, Math.min(1, al));
+      const cy = Math.max(H * 0.3, 210), clear = wavePhase === 'clear';
+      const col = clear ? '111,255,208' : '111,232,212';
+      ctx.fillStyle = `rgba(4,18,22,0.55)`; ctx.fillRect(0, cy - 34, W, 70);
+      ctx.fillStyle = `rgba(${col},0.85)`; ctx.fillRect(0, cy - 34, W, 1.5); ctx.fillRect(0, cy + 35, W, 1.5);
+      ctx.textAlign = 'center';
+      spaced(6);
+      ctx.font = `900 28px ${FONT}`; ctx.fillStyle = `rgb(${col})`;
+      ctx.save(); ctx.shadowColor = `rgb(${col})`; ctx.shadowBlur = 14;
+      ctx.fillText(waveBannerText, W / 2 + 3, cy + 6);
+      ctx.restore();
+      spaced(1);
+      ctx.font = `13px ${FONT}`; ctx.fillStyle = '#b8d8e0';
+      ctx.fillText(waveBannerSub, W / 2, cy + 27);
+      spaced(0);
+      ctx.globalAlpha = 1;
+    }
+
     // boss: a thin chamfered bar
     const boss = enemies.find(e => e.boss);
     if (boss) {
@@ -2168,7 +2267,7 @@
     let best = { time: 0, kills: 0 };
     try { best = JSON.parse(localStorage.getItem('hollownight.best') || 'null') || best; } catch (e) { /* ignore */ }
     const t = Math.floor(time), fmt = n => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0');
-    const rows = [['生存時間', fmt(t), 'BEST ' + fmt(best.time)], ['撃破数', String(kills), 'BEST ' + best.kills], ['到達レベル', 'Lv ' + level, '']];
+    const rows = [['到達ウェーブ', 'WAVE ' + wave, 'BEST ' + (best.wave || wave)], ['生存時間', fmt(t), 'BEST ' + fmt(best.time)], ['撃破数', String(kills), 'BEST ' + best.kills], ['到達レベル', 'Lv ' + level, '']];
     const pw = Math.min(W - 40, 340), px = (W - pw) / 2, py = cy + 54, rh = 46;
     chamfer(ctx, px, py, pw, rh * rows.length + 16, 14);
     ctx.fillStyle = 'rgba(14,20,36,0.92)'; ctx.fill();
@@ -2226,6 +2325,8 @@
     if (state === 'dead') drawGameOver();
   }
 
+  startWave(Number(params.get('w')) || 1);
+
   // debug hooks for testing
   window.__dbg = {
     addXp, spawnBoss, choose: chooseUpgrade,
@@ -2236,6 +2337,9 @@
     awaken: id => { aw[id] = true; recalc(); },
     damage: n => { hp -= n; if (hp <= 0) { if (aw.vit && !revived) { revived = true; hp = S.maxHp; invuln = 2.5; shockwave(); } else { hp = 0; gameOver(); } } },
     reset: resetGame,
+    killAll: () => { waveSpawned = waveTotal; enemies.forEach(e => { e.hp = 0; }); },
+    get wave() { return wave; },
+    get phase() { return wavePhase; },
     get hp() { return hp; },
     laserPts: () => lasers.map(l => l.pts && l.pts.map(p => p.map(Math.round))),
     get state() { return state; },
