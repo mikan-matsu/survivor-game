@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '27-snappy-mage';
+  const BUILD = '31-faster-levels';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -982,7 +982,7 @@
 
   // ---- progression ----
   let level = 1, xp = 0, pending = 0;
-  const xpNeed = lv => 3 + Math.round(lv * 2.4 + lv * lv * 0.25);
+  const xpNeed = lv => 3 + Math.round((lv * 2.4 + lv * lv * 0.25) * 0.8);
   let hp = 100, invuln = 0, hitFlash = 0, shake = 0, deadT = 0, revived = false;
   const hearts = [], magnets = [];
   const up = { vit: 0, bolt: 1, dmg: 0, rate: 0, count: 0, pierce: 0, move: 0, magnet: 0, range: 0, missile: 0, laser: 0, bomb: 0 };
