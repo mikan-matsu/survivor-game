@@ -510,41 +510,43 @@
   // Player: "Ash", a hooded lantern-mage. 4 walk frames.
   // =====================================================================
   const PW = 64, PH = 84, PAX = 32, PAY = 74;
+  // Hero: "Bolt", a small combat robot. No hair, no human face: just a visor, two eyes and clean shapes.
   function drawHero(g, step) {
-    const leg = [0, 3, 0, -3][step], bob = [0, -1, 0, -1][step], fl = [0, 2, 0, -2][step];
+    const leg = [0, 3, 0, -3][step], bob = [0, -1, 0, -1][step], sway = [0, 1.2, 0, -1.2][step];
     g.save();
     g.translate(0, bob);
-    // short scarf tail
-    P(g, [[26, 40], [18 - fl, 44], [14 - fl, 52], [21, 49], [27, 45]], '#ff8a1e', MOON);
-    // legs and boots
+    // legs and orange feet
     g.save(); g.translate(0, -bob);
-    for (const [x, o] of [[25, leg], [34, -leg]]) {
-      const lift = Math.max(0, o) * 0.6;
-      P(g, [[x + o * 0.4, 58 - lift], [x + 6 + o * 0.4, 58 - lift], [x + 6 + o * 0.4, 74 - lift], [x - 1 + o * 0.4, 74 - lift]], '#2c3346', MOON);
-      P(g, [[x - 1 + o * 0.4, 69 - lift], [x + 7 + o * 0.4, 69 - lift], [x + 8 + o * 0.4, 74 - lift], [x - 1 + o * 0.4, 74 - lift]], '#4a3a30', false);
+    for (const [x, o] of [[26, leg], [35, -leg]]) {
+      const lift = Math.max(0, o) * 0.6, ox = o * 0.4;
+      P(g, [[x + ox, 61], [x + 5 + ox, 61], [x + 5 + ox, 70 - lift], [x + ox, 70 - lift]], '#56627a', MOON);
+      P(g, [[x - 1.5 + ox, 70 - lift], [x + 7.5 + ox, 70 - lift], [x + 9 + ox, 74 - lift], [x - 3 + ox, 74 - lift]], '#ff8a1e', MOON);
     }
     g.restore();
-    // jacket
-    P(g, [[23, 40], [41, 40], [43, 60], [21, 60]], '#3558a8', MOON);
-    P(g, [[30, 41], [34, 41], [35, 60], [29, 60]], '#e8eef8', false);
-    P(g, [[21, 56], [43, 56], [43, 60], [21, 60]], '#27427f', false);
-    // scarf at the neck
-    P(g, [[24, 37], [40, 37], [41, 42], [23, 42]], '#ff8a1e', MOON);
+    // backpack with a small jet
+    P(g, [[13, 43], [21, 43], [21, 57], [13, 57]], '#56627a', MOON);
+    P(g, [[13, 49], [21, 49], [21, 52], [13, 52]], '#ff8a1e', false);
+    // torso
+    P(g, [[22, 39], [44, 39], [46, 42], [45, 58], [41, 61], [25, 61], [21, 58], [20, 42]], '#e1e8f2', MOON);
+    P(g, [[27, 44], [39, 44], [39, 54], [27, 54]], '#ff8a1e', MOON);
+    glow(g, 33, 49, 8, '120,240,255', 0.7); E(g, 33, 49, 2.8, 2.8, '#c8fbff', false);
+    P(g, [[21, 57], [45, 57], [45, 60], [21, 60]], '#4a566c', false);
     // left arm
-    line(g, [[23, 43], [19, 54]], '#3558a8', 4.6);
-    E(g, 19, 55.5, 2.6, 2.6, '#f4d9c0', false);
-    // head
-    E(g, 32, 30, 9.5, 9.5, '#f4d9c0', MOON);
-    P(g, [[22, 29], [23, 20], [30, 15], [38, 16], [42, 22], [42, 29], [38, 24], [30, 23], [26, 27]], '#6a4630', MOON);
-    E(g, 36.5, 31.5, 1.5, 1.7, '#2a2230', false); E(g, 29.5, 31.5, 1.5, 1.7, '#2a2230', false);
-    E(g, 37, 31, 0.5, 0.5, '#ffffff', false); E(g, 30, 31, 0.5, 0.5, '#ffffff', false);
-    line(g, [[32, 35.5], [35, 35.5]], '#b07a60', 1);
-    // right arm and a small pistol
-    line(g, [[41, 43], [49, 47]], '#3558a8', 4.6);
-    P(g, [[47, 42], [58, 42], [58, 46], [51, 46], [51, 52], [47, 52]], '#4a5262', 'rgba(255,255,255,0.9)');
-    P(g, [[52, 42], [58, 42], [58, 46], [52, 46]], '#5c6578', false);
-    E(g, 49, 48.5, 2.5, 2.5, '#f4d9c0', false);
-    glow(g, 58.5, 44, 5, '255,190,80', 0.6);
+    P(g, [[16, 41], [22, 41], [22, 53], [16, 53]], '#e1e8f2', MOON);
+    E(g, 19, 55.5, 3.2, 3.2, '#56627a', MOON);
+    // head: a rounded helmet with a dark visor
+    P(g, [[33 - 9, 36], [33 - 9, 37.5], [33 + 9, 37.5], [33 + 9, 36]], '#56627a', false);
+    P(g, [[24, 14], [42, 14], [46, 18], [46, 33], [42, 37], [24, 37], [20, 33], [20, 18]], '#eef2f9', MOON);
+    P(g, [[24, 21], [43, 21], [44, 23], [44, 30], [43, 32], [24, 32], [22, 30], [22, 23]], '#14203a', false);
+    for (const x of [30, 38]) { glow(g, x, 26.5, 6, '95,240,255', 0.8); P(g, [[x - 2, 23.5], [x + 2, 23.5], [x + 2, 29.5], [x - 2, 29.5]], '#7ff6ff', false); }
+    line(g, [[33, 14], [33 + sway, 7]], '#9aa6b8', 1.6);
+    E(g, 33 + sway, 6, 2.3, 2.3, '#ff8a1e', 'rgba(255,255,255,0.8)'); glow(g, 33 + sway, 6, 6, '255,150,40', 0.7);
+    // right arm: a cannon
+    P(g, [[44, 41], [50, 41], [50, 47], [44, 47]], '#e1e8f2', MOON);
+    P(g, [[47, 42], [60, 42], [63, 44], [63, 50], [60, 52], [47, 52]], '#56627a', MOON);
+    P(g, [[58, 42], [61, 42], [63, 44], [63, 50], [61, 52], [58, 52]], '#ff8a1e', false);
+    line(g, [[49, 47], [57, 47]], 'rgba(120,240,255,0.9)', 1.2);
+    glow(g, 63.5, 47, 8, '255,190,80', 0.8);
     g.restore();
   }
   const playerFrames = [0, 1, 2, 3].map(i => mk(PW, PH, g => drawHero(g, i)));
@@ -1270,7 +1272,7 @@
     if (weapon.timer <= 0) {
       const target = nearestEnemy(S.range);
       if (target) {
-        const ox = player.x + player.face * 24, oy = player.y - 27;
+        const ox = player.x + player.face * 28, oy = player.y - 25;
         const base = Math.atan2(target.y - target.t.cy - oy, target.x - ox);
         for (let i = 0; i < S.count; i++) fireBolt(ox, oy, base + (i - (S.count - 1) / 2) * 0.2);
         volley++;
@@ -1912,7 +1914,7 @@
       ctx.fillStyle = f < 0.3 ? '#ff3a5a' : '#ff7a8a'; ctx.fillRect(bx, by, bw * f, 4);
     }
     // pulsing glow on the staff orb
-    const gx = px + player.face * 24, gy = py - 27 + breathe;
+    const gx = px + player.face * 28, gy = py - 25 + breathe;
     const pulse = 0.75 + Math.sin(clock * 5) * 0.25;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
