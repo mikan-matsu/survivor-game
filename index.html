@@ -996,7 +996,7 @@
     const lv = k => Math.max(0, up[k] - 1);
     S.mis = { n: cnt[up.missile] * (aw.missile ? 2 : 1) + (aw.missile ? 2 : 0), cd: 2.4 * Math.pow(0.9, lv('missile')) * cm * (aw.missile ? 0.75 : 1),
       dmg: Math.round(24 * (1 + 0.3 * lv('missile')) * dm), r: aw.missile ? 85 : 58 };
-    S.las = { chain: [0, 0, 1, 2, 3, 5][up.laser] + (aw.laser ? 5 : 0), n: [0, 3, 3, 3, 4, 4][up.laser] + (aw.laser ? 2 : 0), cd: 7 * Math.pow(0.9, lv('laser')) * cm, dur: (0.45 + 0.04 * up.laser) * (aw.laser ? 1.5 : 1),
+    S.las = { chain: [0, 0, 1, 2, 3, 5][up.laser] + (aw.laser ? 5 : 0), n: [0, 1, 1, 2, 2, 3][up.laser] + (aw.laser ? 2 : 0), cd: 7 * Math.pow(0.9, lv('laser')) * cm, dur: (0.45 + 0.04 * up.laser) * (aw.laser ? 1.5 : 1),
       dmg: Math.round(2 * (1 + 0.45 * lv('laser')) * dm * (aw.laser ? 1.3 : 1)), w: aw.laser ? 34 : 24 };
     S.bmb = { n: cnt[up.bomb], cd: 3.2 * Math.pow(0.92, lv('bomb')) * cm, dmg: Math.round(36 * (1 + 0.3 * lv('bomb')) * dm),
       r: (80 + 8 * up.bomb) * (aw.bomb ? 1.25 : 1) };
@@ -1014,7 +1014,7 @@
     { id: 'magnet', icon: '吸', name: '引き寄せ',   desc: '宝石を吸い込む範囲 +40%', max: 4, color: '#7dff8a', aname: '宝石の嵐',     adesc: '全ての宝石を引き寄せ、経験値1.5倍' },
     { id: 'range',  icon: '射', name: 'スコープ',   desc: '射程 +20%',              max: 4, color: '#8fb8ff', aname: '千里眼',       adesc: '射程が大幅に伸び、弾が敵を追尾する' },
     { id: 'missile', icon: '誘', name: 'ミサイル', ndesc: '新スキル: 追尾ミサイルを撃ち、爆発で範囲攻撃', desc: 'ミサイルの威力・本数・連射が強化', max: 5, color: '#ff6a4a', aname: 'ミサイルの嵐', adesc: '大量のミサイルを撃ち、爆発範囲も拡大' },
-    { id: 'laser',  icon: '光', name: 'レーザー', ndesc: '新スキル: 背後から3本のレーザーが別々の敵へ飛び、連鎖する', desc: 'レーザーの威力・本数・連鎖数が強化', max: 5, color: '#6af0ff', aname: 'オーバーレーザー', adesc: 'レーザーがさらに3本増えて太くなり、連鎖も爆発的に増える' },
+    { id: 'laser',  icon: '光', name: 'レーザー', ndesc: '新スキル: 背後からレーザーが敵を狙う。育てるほど本数と連鎖が増える', desc: 'レーザーの威力・本数・連鎖数が強化', max: 5, color: '#6af0ff', aname: 'オーバーレーザー', adesc: 'レーザーがさらに3本増えて太くなり、連鎖も爆発的に増える' },
     { id: 'bomb',   icon: '爆', name: '爆弾', ndesc: '新スキル: 足元に爆弾を置き、範囲爆発', desc: '爆弾の威力・範囲・個数が強化', max: 5, color: '#ffb040', aname: '連鎖爆弾', adesc: '爆発が小さな爆弾を生み、連鎖して爆発する' },
   ];
   let choices = [];
@@ -1116,13 +1116,13 @@
     wave = n; wavePhase = 'spawn';
     const boss = n % 5 === 0;
     waveTotal = Math.min(120, boss ? 8 + n * 3 : 12 + n * 5);
-    waveSpawned = 0; spawnTimer = 0.5;
+    waveSpawned = 0; spawnTimer = 0.25;
     waveBannerT = 2.4; waveBannerText = 'WAVE ' + n;
     waveBannerSub = boss ? 'ボスウェーブ' : `敵 ${waveTotal}体`;
     if (boss) spawnBoss();
   }
   function endWave() {
-    wavePhase = 'clear'; interTimer = 2.5;
+    wavePhase = 'clear'; interTimer = 1.2;
     const heal = Math.round(S.maxHp * 0.25);
     hp = Math.min(S.maxHp, hp + heal);
     waveBannerT = 2.2; waveBannerText = 'WAVE ' + wave + ' CLEAR'; waveBannerSub = `体力 +${heal}`;
