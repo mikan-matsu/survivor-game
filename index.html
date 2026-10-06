@@ -33,6 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
+  const BUILD = '25-laser1-gap0.6';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -997,7 +998,7 @@
     S.mis = { n: cnt[up.missile] * (aw.missile ? 2 : 1) + (aw.missile ? 2 : 0), cd: 2.4 * Math.pow(0.9, lv('missile')) * cm * (aw.missile ? 0.75 : 1),
       dmg: Math.round(24 * (1 + 0.3 * lv('missile')) * dm), r: aw.missile ? 85 : 58 };
     S.las = { chain: [0, 0, 1, 2, 3, 5][up.laser] + (aw.laser ? 5 : 0), n: [0, 1, 1, 2, 2, 3][up.laser] + (aw.laser ? 2 : 0), cd: 7 * Math.pow(0.9, lv('laser')) * cm, dur: (0.45 + 0.04 * up.laser) * (aw.laser ? 1.5 : 1),
-      dmg: Math.round(2 * (1 + 0.45 * lv('laser')) * dm * (aw.laser ? 1.3 : 1)), w: aw.laser ? 34 : 24 };
+      dmg: Math.round(2 * (1 + 0.45 * lv('laser')) * dm * (aw.laser ? 1.3 : 1)), w: (10 + 2.5 * up.laser) * (aw.laser ? 1.7 : 1) };
     S.bmb = { n: cnt[up.bomb], cd: 3.2 * Math.pow(0.92, lv('bomb')) * cm, dmg: Math.round(36 * (1 + 0.3 * lv('bomb')) * dm),
       r: (80 + 8 * up.bomb) * (aw.bomb ? 1.25 : 1) };
   }
@@ -1116,13 +1117,13 @@
     wave = n; wavePhase = 'spawn';
     const boss = n % 5 === 0;
     waveTotal = Math.min(120, boss ? 8 + n * 3 : 12 + n * 5);
-    waveSpawned = 0; spawnTimer = 0.25;
+    waveSpawned = 0; spawnTimer = 0.1;
     waveBannerT = 2.4; waveBannerText = 'WAVE ' + n;
     waveBannerSub = boss ? 'ボスウェーブ' : `敵 ${waveTotal}体`;
     if (boss) spawnBoss();
   }
   function endWave() {
-    wavePhase = 'clear'; interTimer = 1.2;
+    wavePhase = 'clear'; interTimer = 0.6;
     const heal = Math.round(S.maxHp * 0.25);
     hp = Math.min(S.maxHp, hp + heal);
     waveBannerT = 2.2; waveBannerText = 'WAVE ' + wave + ' CLEAR'; waveBannerSub = `体力 +${heal}`;
@@ -1966,7 +1967,7 @@
         ctx.stroke();
       }
       for (let i = 0; i < pts.length; i++) {
-        const [x, y] = pts[i], r = w * (i ? 1 : 1.4) + 6;
+        const [x, y] = pts[i], r = w * (i ? 0.8 : 1.0) + 3;
         ctx.fillStyle = rg(ctx, x, y, 0, x, y, r, [[0, 'rgba(255,255,255,0.8)'], [1, 'rgba(80,200,255,0)']]);
         ctx.fillRect(x - r, y - r, r * 2, r * 2);
       }
@@ -2506,6 +2507,7 @@
     }
     drawHud();
     drawStick();
+    ctx.font = `10px ${FONT}`; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillText('build ' + BUILD, 8, H - 8);
     if (state === 'levelup') drawLevelUp();
     if (state === 'dead') drawGameOver();
   }
