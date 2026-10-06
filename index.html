@@ -117,9 +117,9 @@
 
   // ---------- Enemies ----------
   const ENEMY_TYPES = [
-    { name: 'slime', r: 12, speed: 55,  color: '#7bd36b', dark: '#3f8f43' },
-    { name: 'bat',   r: 10, speed: 95,  color: '#9b6bd6', dark: '#5a3a8c' },
-    { name: 'ghoul', r: 15, speed: 70,  color: '#d6735f', dark: '#8c3b2e' },
+    { name: 'slime', r: 12, speed: 55, hp: 20, color: '#7bd36b', dark: '#3f8f43' },
+    { name: 'bat',   r: 10, speed: 95, hp: 12, color: '#9b6bd6', dark: '#5a3a8c' },
+    { name: 'ghoul', r: 15, speed: 70, hp: 50, color: '#d6735f', dark: '#8c3b2e' },
   ];
   const enemies = [];
   const MAX_ENEMIES = 120;
@@ -133,7 +133,7 @@
     const t = roll < 0.6 ? ENEMY_TYPES[0] : roll < 0.85 ? ENEMY_TYPES[1] : ENEMY_TYPES[2];
     enemies.push({
       t, x: player.x + Math.cos(ang) * dist, y: player.y + Math.sin(ang) * dist,
-      phase: Math.random() * 6.28, face: 1,
+      phase: Math.random() * 6.28, face: 1, hp: t.hp, flash: 0,
     });
   }
 
@@ -144,6 +144,7 @@
     while (spawnTimer <= 0) { spawnEnemy(); spawnTimer += interval; }
 
     for (const e of enemies) {
+      e.flash = Math.max(0, e.flash - dt);
       const dx = player.x - e.x, dy = player.y - e.y;
       const d = Math.hypot(dx, dy) || 1;
       e.x += dx / d * e.t.speed * dt;
@@ -173,6 +174,130 @@
     }
   }
 
+  // ---------- Auto attack: magic bolts ----------
+  const weapon = { cooldown: 0.7, timer: 0, range: 380, speed: 440, damage: 10, life: 1.4, r: 6 };
+  const bolts = [];
+  const particles = [];
+  const popups = [];
+  let kills = 0;
+
+  function nearestEnemy(maxDist) {
+    let best = null, bd = maxDist * maxDist;
+    for (const e of enemies) {
+      const d = (e.x - player.x) ** 2 + (e.y - player.y) ** 2;
+      if (d < bd) { bd = d; best = e; }
+    }
+    return best;
+  }
+
+  function updateWeapon(dt) {
+    weapon.timer -= dt;
+    if (weapon.timer <= 0) {
+      const target = nearestEnemy(weapon.range);
+      if (target) {
+        const dx = target.x - player.x, dy = target.y - player.y;
+        const d = Math.hypot(dx, dy) || 1;
+        bolts.push({ x: player.x, y: player.y - 8, vx: dx / d * weapon.speed, vy: dy / d * weapon.speed, life: weapon.life });
+        weapon.timer = weapon.cooldown;
+      } else {
+        weapon.timer = 0.1; // keep checking until something is in range
+      }
+    }
+    for (let i = bolts.length - 1; i >= 0; i--) {
+      const b = bolts[i];
+      b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+      let hit = null;
+      for (const e of enemies) {
+        const rr = e.t.r + weapon.r;
+        if ((e.x - b.x) ** 2 + (e.y - b.y) ** 2 < rr * rr) { hit = e; break; }
+      }
+      if (hit) {
+        hitEnemy(hit, weapon.damage, b.vx, b.vy);
+        bolts.splice(i, 1);
+      } else if (b.life <= 0) {
+        bolts.splice(i, 1);
+      }
+    }
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      if (e.hp <= 0) {
+        kills++;
+        burst(e.x, e.y, e.t.color);
+        enemies.splice(i, 1);
+      }
+    }
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+      p.vx *= 0.92; p.vy *= 0.92;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    for (let i = popups.length - 1; i >= 0; i--) {
+      popups[i].y -= 30 * dt; popups[i].life -= dt;
+      if (popups[i].life <= 0) popups.splice(i, 1);
+    }
+  }
+
+  function hitEnemy(e, dmg, vx, vy) {
+    e.hp -= dmg;
+    e.flash = 0.08;
+    const d = Math.hypot(vx, vy) || 1;
+    e.x += vx / d * 8; e.y += vy / d * 8; // small knockback
+    popups.push({ x: e.x, y: e.y - e.t.r - 6, text: String(dmg), life: 0.5 });
+    burst(e.x, e.y, '#fff', 3);
+  }
+
+  function burst(x, y, color, n = 10) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.283, sp = 60 + Math.random() * 120;
+      particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.3 + Math.random() * 0.3, color });
+    }
+  }
+
+  function drawEffects() {
+    const left = cam.x - W / 2, top = cam.y - H / 2;
+    for (const p of particles) {
+      ctx.globalAlpha = Math.min(1, p.life * 3);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - left - 2, p.y - top - 2, 4, 4);
+    }
+    ctx.globalAlpha = 1;
+    for (const b of bolts) {
+      const sx = b.x - left, sy = b.y - top;
+      const g = ctx.createRadialGradient(sx, sy, 1, sx, sy, 16);
+      g.addColorStop(0, 'rgba(255,220,120,0.9)');
+      g.addColorStop(1, 'rgba(255,140,30,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(sx, sy, 16, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#fff4c2';
+      ctx.beginPath(); ctx.arc(sx, sy, weapon.r - 1, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#ff9a1f';
+      ctx.beginPath(); ctx.arc(sx - b.vx * 0.015, sy - b.vy * 0.015, weapon.r - 2.5, 0, 6.283); ctx.fill();
+    }
+    ctx.font = 'bold 14px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillStyle = '#fff';
+    for (const p of popups) {
+      ctx.globalAlpha = Math.min(1, p.life * 4);
+      ctx.strokeText(p.text, p.x - left, p.y - top);
+      ctx.fillText(p.text, p.x - left, p.y - top);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHud() {
+    ctx.font = 'bold 16px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillStyle = '#fff';
+    const y = 28 + (parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0);
+    ctx.strokeText('撃破 ' + kills, 16, y);
+    ctx.fillText('撃破 ' + kills, 16, y);
+  }
+
   function update(dt) {
     time += dt;
     const v = getInput();
@@ -183,6 +308,7 @@
     cam.x = player.x;
     cam.y = player.y;
     updateEnemies(dt);
+    updateWeapon(dt);
   }
 
   // ---------- Background: procedural grass field ----------
@@ -342,6 +468,10 @@
       ctx.beginPath(); ctx.moveTo(9, -12 + y); ctx.lineTo(6, -20 + y); ctx.lineTo(3, -13 + y); ctx.fill();
     }
     ctx.restore();
+    if (e.flash > 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.beginPath(); ctx.arc(sx, sy, t.r, 0, 6.283); ctx.fill();
+    }
   }
 
   function drawEnemies() {
@@ -383,6 +513,8 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawBackground();
     drawEnemies();
+    drawEffects();
+    drawHud();
     drawStick();
   }
 
