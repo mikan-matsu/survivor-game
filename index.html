@@ -33,14 +33,15 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '26-nogap';
+  const BUILD = '27-snappy-mage';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
 
-  let W = 0, H = 0, dpr = 1, vignette = null;
+  let W = 0, H = 0, dpr = 1, vignette = null, safeTop = 0;
   function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    safeTop = parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0;
     W = window.innerWidth;
     H = window.innerHeight;
     canvas.width = Math.round(W * dpr);
@@ -513,41 +514,46 @@
   const PW = 64, PH = 84, PAX = 32, PAY = 74;
   // Hero: "Bolt", a small combat robot. No hair, no human face: just a visor, two eyes and clean shapes.
   function drawHero(g, step) {
-    const leg = [0, 3, 0, -3][step], bob = [0, -1, 0, -1][step], sway = [0, 1.2, 0, -1.2][step];
+    const leg = [0, 3, 0, -3][step], bob = [0, -1, 0, -1][step], flap = [0, 2, 0, -2][step];
     g.save();
     g.translate(0, bob);
-    // legs and orange feet
+    // trailing cape
+    P(g, [[26, 42], [20, 44], [8 - flap, 62], [12 - flap, 72], [20, 70], [30, 72]], '#1c2150', MOON);
+    P(g, [[24, 50], [14 - flap * 0.6, 64], [18, 68], [26, 62]], '#101438', false);
+    // boots
     g.save(); g.translate(0, -bob);
-    for (const [x, o] of [[26, leg], [35, -leg]]) {
-      const lift = Math.max(0, o) * 0.6, ox = o * 0.4;
-      P(g, [[x + ox, 61], [x + 5 + ox, 61], [x + 5 + ox, 70 - lift], [x + ox, 70 - lift]], '#56627a', MOON);
-      P(g, [[x - 1.5 + ox, 70 - lift], [x + 7.5 + ox, 70 - lift], [x + 9 + ox, 74 - lift], [x - 3 + ox, 74 - lift]], '#ff8a1e', MOON);
+    for (const [x, o] of [[25, leg], [34, -leg]]) {
+      const lift = Math.max(0, o) * 0.6;
+      P(g, [[x + o * 0.4, 66 - lift], [x + 6 + o * 0.4, 66 - lift], [x + 8 + o * 0.4, 74 - lift], [x - 1 + o * 0.4, 74 - lift]], '#0c1022', 'rgba(160,215,255,0.5)');
     }
     g.restore();
-    // backpack with a small jet
-    P(g, [[13, 43], [21, 43], [21, 57], [13, 57]], '#56627a', MOON);
-    P(g, [[13, 49], [21, 49], [21, 52], [13, 52]], '#ff8a1e', false);
-    // torso
-    P(g, [[22, 39], [44, 39], [46, 42], [45, 58], [41, 61], [25, 61], [21, 58], [20, 42]], '#e1e8f2', MOON);
-    P(g, [[27, 44], [39, 44], [39, 54], [27, 54]], '#ff8a1e', MOON);
-    glow(g, 33, 49, 8, '120,240,255', 0.7); E(g, 33, 49, 2.8, 2.8, '#c8fbff', false);
-    P(g, [[21, 57], [45, 57], [45, 60], [21, 60]], '#4a566c', false);
-    // left arm
-    P(g, [[16, 41], [22, 41], [22, 53], [16, 53]], '#e1e8f2', MOON);
-    E(g, 19, 55.5, 3.2, 3.2, '#56627a', MOON);
-    // head: a rounded helmet with a dark visor
-    P(g, [[33 - 9, 36], [33 - 9, 37.5], [33 + 9, 37.5], [33 + 9, 36]], '#56627a', false);
-    P(g, [[24, 14], [42, 14], [46, 18], [46, 33], [42, 37], [24, 37], [20, 33], [20, 18]], '#eef2f9', MOON);
-    P(g, [[24, 21], [43, 21], [44, 23], [44, 30], [43, 32], [24, 32], [22, 30], [22, 23]], '#14203a', false);
-    for (const x of [30, 38]) { glow(g, x, 26.5, 6, '95,240,255', 0.8); P(g, [[x - 2, 23.5], [x + 2, 23.5], [x + 2, 29.5], [x - 2, 29.5]], '#7ff6ff', false); }
-    line(g, [[33, 14], [33 + sway, 7]], '#9aa6b8', 1.6);
-    E(g, 33 + sway, 6, 2.3, 2.3, '#ff8a1e', 'rgba(255,255,255,0.8)'); glow(g, 33 + sway, 6, 6, '255,150,40', 0.7);
-    // right arm: a cannon
-    P(g, [[44, 41], [50, 41], [50, 47], [44, 47]], '#e1e8f2', MOON);
-    P(g, [[47, 42], [60, 42], [63, 44], [63, 50], [60, 52], [47, 52]], '#56627a', MOON);
-    P(g, [[58, 42], [61, 42], [63, 44], [63, 50], [61, 52], [58, 52]], '#ff8a1e', false);
-    line(g, [[49, 47], [57, 47]], 'rgba(120,240,255,0.9)', 1.2);
-    glow(g, 63.5, 47, 8, '255,190,80', 0.8);
+    // robe with a jagged hem
+    P(g, [[22, 40], [42, 40], [46, 56], [48, 71], [43, 68], [39, 73], [34, 68], [29, 73], [24, 68], [19, 71], [20, 56]], '#27306e', MOON);
+    // lantern-light lining down the front
+    P(g, [[30, 44], [34, 44], [37, 70], [34, 66], [32, 72], [29, 66], [27, 70]], '#ff9f2e', false);
+    glow(g, 32, 56, 14, '255,170,60', 0.35);
+    // belt sigil
+    P(g, [[32, 48], [36, 52], [32, 56], [28, 52]], '#ffd27a', false);
+    glow(g, 32, 52, 7, '255,200,100', 0.7);
+    // shoulder mantle
+    P(g, [[18, 42], [24, 36], [40, 36], [46, 42], [41, 46], [23, 46]], '#1d2358', MOON);
+    line(g, [[20, 43], [32, 47], [44, 43]], '#ffb347', 1.4);
+    // staff arm and staff
+    line(g, [[41, 44], [47, 50]], '#1d2358', 4.5);
+    line(g, [[47, 32], [47, 76]], '#2a1c14', 3);
+    line(g, [[46.3, 34], [46.3, 74]], 'rgba(255,200,130,0.35)', 1);
+    E(g, 47, 50, 2.6, 2.6, '#cfd8e8', false);
+    // orb
+    glow(g, 47, 32, 12, '255,180,70', 0.8);
+    E(g, 47, 32, 4.2, 4.2, '#ffe9b0', false);
+    E(g, 47, 32, 2, 2, '#fff', false);
+    // hood with a peaked, bent tip
+    P(g, [[19, 40], [21, 26], [27, 15], [35, 8], [44, 6], [41, 12], [43, 20], [45, 40]], '#1d2358', MOON);
+    P(g, [[24, 40], [24, 28], [30, 18], [38, 20], [42, 30], [41, 40]], '#05070f', false);
+    // glowing amber eyes
+    eye(g, 29.5, 31, 2.1, 1.5, '255,176,60', 0.15);
+    eye(g, 37, 31, 2.1, 1.5, '255,176,60', -0.15);
+    line(g, [[22, 22], [27, 14], [35, 8]], 'rgba(160,215,255,0.8)', 1);
     g.restore();
   }
   const playerFrames = [0, 1, 2, 3].map(i => mk(PW, PH, g => drawHero(g, i)));
@@ -879,6 +885,8 @@
       g.restore();
     }));
     t.flash = t.spr.map(c => silhouette(c));
+    const mirror = src => { const c = document.createElement('canvas'); c.width = src.width; c.height = src.height; const g = c.getContext('2d'); g.translate(c.width, 0); g.scale(-1, 1); g.drawImage(src, 0, 0); return c; };
+    t.sprF = t.spr.map(mirror); t.flashF = t.flash.map(mirror);
   }
 
   // =====================================================================
@@ -974,7 +982,7 @@
 
   // ---- progression ----
   let level = 1, xp = 0, pending = 0;
-  const xpNeed = lv => 4 + lv * 3 + Math.floor(lv * lv * 0.3);
+  const xpNeed = lv => 3 + Math.round(lv * 2.4 + lv * lv * 0.25);
   let hp = 100, invuln = 0, hitFlash = 0, shake = 0, deadT = 0, revived = false;
   const hearts = [], magnets = [];
   const up = { vit: 0, bolt: 1, dmg: 0, rate: 0, count: 0, pierce: 0, move: 0, magnet: 0, range: 0, missile: 0, laser: 0, bomb: 0 };
@@ -1006,14 +1014,14 @@
 
   const UPGRADES = [
     { id: 'vit',    icon: '命', name: '生命の灯',   desc: '最大HP +20・少し回復・自然回復が強化', max: 5, color: '#ff6a9a', aname: '不死の誓い', adesc: '倒れても一度だけ全回復で蘇り、周囲を吹き飛ばす' },
-    { id: 'bolt',   icon: '魔', name: '弾丸',       desc: '弾丸の威力 +25%・連射 +7%', max: 6, color: '#ffb347', aname: '天穹の裁き', adesc: '弾丸が貫通・爆発・追尾し、威力も跳ね上がる' },
-    { id: 'dmg',    icon: '攻', name: '火力強化',   desc: '弾の威力 +25%',          max: 6, color: '#ff8a3d', aname: '業火の弾丸',   adesc: '命中すると爆発し、周囲の敵にもダメージ' },
-    { id: 'rate',   icon: '速', name: '速射',       desc: '発射間隔 -15%',          max: 5, color: '#ffd23f', aname: '無限装填',       adesc: '発射間隔がさらに大幅に短くなる' },
-    { id: 'count',  icon: '数', name: '多連装',     desc: '同時に撃つ弾 +1',        max: 3, color: '#ff6a8a', aname: '星屑の嵐',     adesc: '3回に1回、全方位へ弾を放つ' },
-    { id: 'pierce', icon: '貫', name: '徹甲弾',     desc: '敵を1体多く貫通',        max: 3, color: '#b58aef', aname: '無限貫通',     adesc: '弾がすべての敵を貫通する' },
+    { id: 'bolt',   icon: '魔', name: '魔弾',       desc: '魔弾の威力 +25%・連射 +7%', max: 6, color: '#ffb347', aname: '天穹の裁き', adesc: '魔弾が貫通・爆発・追尾し、威力も跳ね上がる' },
+    { id: 'dmg',    icon: '攻', name: '魔力増幅',   desc: '弾の威力 +25%',          max: 6, color: '#ff8a3d', aname: '業火の魔弾',   adesc: '命中すると爆発し、周囲の敵にもダメージ' },
+    { id: 'rate',   icon: '速', name: '高速詠唱',   desc: '発射間隔 -15%',          max: 5, color: '#ffd23f', aname: '無詠唱',       adesc: '発射間隔がさらに大幅に短くなる' },
+    { id: 'count',  icon: '数', name: '多重詠唱',   desc: '同時に撃つ弾 +1',        max: 3, color: '#ff6a8a', aname: '星屑の嵐',     adesc: '3回に1回、全方位へ弾を放つ' },
+    { id: 'pierce', icon: '貫', name: '貫通の魔弾', desc: '敵を1体多く貫通',        max: 3, color: '#b58aef', aname: '無限貫通',     adesc: '弾がすべての敵を貫通する' },
     { id: 'move',   icon: '足', name: '軽やかな足', desc: '移動速度 +10%',          max: 4, color: '#6ad8ff', aname: '疾風の結界',   adesc: '周囲の敵を常に切り刻み、移動も加速' },
     { id: 'magnet', icon: '吸', name: '引き寄せ',   desc: '宝石を吸い込む範囲 +40%', max: 4, color: '#7dff8a', aname: '宝石の嵐',     adesc: '全ての宝石を引き寄せ、経験値1.5倍' },
-    { id: 'range',  icon: '射', name: 'スコープ',   desc: '射程 +20%',              max: 4, color: '#8fb8ff', aname: '千里眼',       adesc: '射程が大幅に伸び、弾が敵を追尾する' },
+    { id: 'range',  icon: '射', name: '遠見の瞳',   desc: '射程 +20%',              max: 4, color: '#8fb8ff', aname: '千里眼',       adesc: '射程が大幅に伸び、弾が敵を追尾する' },
     { id: 'missile', icon: '誘', name: 'ミサイル', ndesc: '新スキル: 追尾ミサイルを撃ち、爆発で範囲攻撃', desc: 'ミサイルの威力・本数・連射が強化', max: 5, color: '#ff6a4a', aname: 'ミサイルの嵐', adesc: '大量のミサイルを撃ち、爆発範囲も拡大' },
     { id: 'laser',  icon: '光', name: 'レーザー', ndesc: '新スキル: 背後からレーザーが敵を狙う。育てるほど本数と連鎖が増える', desc: 'レーザーの威力・本数・連鎖数が強化', max: 5, color: '#6af0ff', aname: 'オーバーレーザー', adesc: 'レーザーがさらに3本増えて太くなり、連鎖も爆発的に増える' },
     { id: 'bomb',   icon: '爆', name: '爆弾', ndesc: '新スキル: 足元に爆弾を置き、範囲爆発', desc: '爆弾の威力・範囲・個数が強化', max: 5, color: '#ffb040', aname: '連鎖爆弾', adesc: '爆発が小さな爆弾を生み、連鎖して爆発する' },
@@ -1051,13 +1059,13 @@
     if (pendingAwaken > 0) {
       pendingAwaken--;
       const list = awakenList();
-      if (list.length) { showScreen('awaken', list, 0.5); return; }
+      if (list.length) { showScreen('awaken', list, 0.3); return; }
       pending++; // nothing to awaken yet: the chest gives a free level-up instead
     }
     if (pending > 0) {
       pending--;
       rollChoices();
-      if (choices.length) { showScreen('level', choices, 0.4); return; }
+      if (choices.length) { showScreen('level', choices, 0.22); return; }
       nextScreen(); return;
     }
     state = 'playing';
@@ -1118,8 +1126,9 @@
     const boss = n % 5 === 0;
     waveTotal = Math.min(120, boss ? 8 + n * 3 : 12 + n * 5);
     waveSpawned = 0; spawnTimer = 0.1;
-    waveBannerT = 1.5; waveBannerText = 'WAVE ' + n;
+    waveBannerT = 1.2; waveBannerText = 'WAVE ' + n;
     waveBannerSub = boss ? 'ボスウェーブ' : `敵 ${waveTotal}体`;
+    for (let i = 0, k = Math.min(6, Math.floor(waveTotal / 3)); i < k; i++) { if (spawnEnemy(false)) waveSpawned++; }
     if (boss) spawnBoss();
   }
   function endWave() { // no clear screen: heal a little, sweep up the gems, and go straight on
@@ -1130,7 +1139,7 @@
   function updateWave(dt) {
     if (wavePhase === 'spawn') {
       spawnTimer -= dt;
-      const interval = Math.max(0.28, 1.1 - wave * 0.06);
+      const interval = Math.max(0.2, 0.75 - wave * 0.04);
       const batch = 1 + (wave >= 4 ? 1 : 0) + (wave >= 8 ? 1 : 0);
       while (spawnTimer <= 0 && waveSpawned < waveTotal) {
         let n = 0;
@@ -1266,7 +1275,7 @@
     if (weapon.timer <= 0) {
       const target = nearestEnemy(S.range);
       if (target) {
-        const ox = player.x + player.face * 28, oy = player.y - 25;
+        const ox = player.x + player.face * 14, oy = player.y - 38;
         const base = Math.atan2(target.y - target.t.cy - oy, target.x - ox);
         for (let i = 0; i < S.count; i++) fireBolt(ox, oy, base + (i - (S.count - 1) / 2) * 0.2);
         volley++;
@@ -1387,7 +1396,7 @@
     L.pts = pts; L.targets = targets;
   }
   function updateSkills(dt) {
-    const ox = player.x, oy = player.y - 36;
+    const ox = player.x, oy = player.y - 38;
     if (up.missile > 0) {
       wt.mis -= dt;
       if (wt.mis <= 0) {
@@ -1704,22 +1713,31 @@
   // =====================================================================
   // Rendering
   // =====================================================================
+  let devTiles = null, devDpr = 0;
   function drawGround() {
+    if (!devTiles || devDpr !== dpr) { // tiles resampled once to the exact device size, so drawing is a plain blit
+      const n = Math.round(TILE * dpr);
+      devTiles = tiles.map(src => { const c = document.createElement('canvas'); c.width = c.height = n; const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, 0, 0, n, n); return c; });
+      devDpr = dpr;
+    }
+    const n = Math.round(TILE * dpr);
     const tx0 = Math.floor(camL / TILE), ty0 = Math.floor(camT / TILE);
     const tx1 = Math.floor((camL + W) / TILE), ty1 = Math.floor((camT + H) / TILE);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     for (let ty = ty0; ty <= ty1; ty++) {
       for (let tx = tx0; tx <= tx1; tx++) {
-        const v = Math.floor(hash(tx, ty, 1) * tiles.length);
-        ctx.drawImage(tiles[v], tx * TILE - camL, ty * TILE - camT, TILE + 0.6, TILE + 0.6);
+        const v = Math.floor(hash(tx, ty, 1) * devTiles.length);
+        ctx.drawImage(devTiles[v], Math.round((tx * TILE - camL) * dpr), Math.round((ty * TILE - camT) * dpr));
       }
     }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  const shadowTex = mk(64, 32, g => { g.fillStyle = 'rgb(20,56,34)'; g.beginPath(); g.ellipse(32, 16, 31, 15, 0, 0, TAU); g.fill(); });
   function shadow(x, y, rx, ry, a) {
-    ctx.fillStyle = `rgba(20,56,34,${a * 0.85})`;
-    ctx.beginPath();
-    ctx.ellipse(x, y, rx, ry, 0, 0, TAU);
-    ctx.fill();
+    ctx.globalAlpha = a * 0.85;
+    ctx.drawImage(shadowTex, x - rx, y - ry, rx * 2, ry * 2);
+    ctx.globalAlpha = 1;
   }
 
   const items = [];
@@ -1864,22 +1882,22 @@
     const t = e.t;
     const f = ((time * 5 + e.phase) | 0) & 1;
     const lift = t.fly ? Math.sin(time * 4 + e.phase) * 2.5 : 0;
-    ctx.save();
-    ctx.translate(e.x - camL, e.y - camT + lift);
-    ctx.scale(e.face, 1);
+    const sx = e.x - camL, sy = e.y - camT + lift;
     if (e.boss) {
       const p = 0.8 + 0.2 * Math.sin(clock * 4);
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = rg(ctx, 0, -t.cy, 10, 0, -t.cy, 100, [[0, `rgba(255,60,120,${0.34 * p})`], [1, 'rgba(255,60,120,0)']]);
-      ctx.fillRect(-100, -t.cy - 100, 200, 200);
+      ctx.fillStyle = rg(ctx, sx, sy - t.cy, 10, sx, sy - t.cy, 100, [[0, `rgba(255,60,120,${0.34 * p})`], [1, 'rgba(255,60,120,0)']]);
+      ctx.fillRect(sx - 100, sy - t.cy - 100, 200, 200);
       ctx.restore();
     }
-    ctx.drawImage(t.spr[f], -t.ax, -t.ay, t.w, t.h);
+    const right = e.face > 0;
+    const x0 = sx - (right ? t.ax : t.w - t.ax), y0 = sy - t.ay;
+    ctx.drawImage((right ? t.spr : t.sprF)[f], x0, y0, t.w, t.h);
     if (e.flash > 0) {
       ctx.globalAlpha = 0.8;
-      ctx.drawImage(t.flash[f], -t.ax, -t.ay, t.w, t.h);
+      ctx.drawImage((right ? t.flash : t.flashF)[f], x0, y0, t.w, t.h);
+      ctx.globalAlpha = 1;
     }
-    ctx.restore();
   }
 
   function drawPlayer() {
@@ -1908,7 +1926,7 @@
       ctx.fillStyle = f < 0.3 ? '#ff3a5a' : '#ff7a8a'; ctx.fillRect(bx, by, bw * f, 4);
     }
     // pulsing glow on the staff orb
-    const gx = px + player.face * 28, gy = py - 25 + breathe;
+    const gx = px + player.face * 14, gy = py - 38 + breathe;
     const pulse = 0.75 + Math.sin(clock * 5) * 0.25;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -2129,17 +2147,29 @@
     c.lineTo(x, y + h); c.lineTo(x, y + k); c.closePath();
   }
   function spaced(px) { try { ctx.letterSpacing = px + 'px'; } catch (e) { /* older browsers */ } }
+  const textCache = new Map();
   function tag(text, x, y, align, size, fill) {
-    ctx.font = `bold ${size}px ${FONT}`;
-    ctx.textAlign = align;
-    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(2,6,14,0.85)';
-    ctx.strokeText(text, x, y);
-    ctx.fillStyle = fill || '#dff3ff';
-    ctx.fillText(text, x, y);
+    const ls = ctx.letterSpacing || '0px', col = fill || '#dff3ff';
+    const key = text + '|' + size + '|' + col + '|' + ls;
+    let e = textCache.get(key);
+    if (!e) {
+      if (textCache.size > 300) textCache.clear();
+      ctx.font = `bold ${size}px ${FONT}`;
+      const w = Math.ceil(ctx.measureText(text).width) + 12, h = size + 12, q = 2;
+      const c = document.createElement('canvas'); c.width = w * q; c.height = h * q;
+      const g = c.getContext('2d'); g.scale(q, q);
+      try { g.letterSpacing = ls; } catch (err) { /* ignore */ }
+      g.font = `bold ${size}px ${FONT}`; g.textAlign = 'left';
+      g.lineWidth = 3; g.strokeStyle = 'rgba(2,6,14,0.85)'; g.lineJoin = 'round';
+      g.strokeText(text, 6, size + 3); g.fillStyle = col; g.fillText(text, 6, size + 3);
+      e = { c, w, h, base: size + 3 }; textCache.set(key, e);
+    }
+    const dx = align === 'left' ? x - 6 : align === 'right' ? x - e.w + 6 : x - e.w / 2;
+    ctx.drawImage(e.c, dx, y - e.base, e.w, e.h);
   }
 
   function drawHud() {
-    const top = (parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0) + 12;
+    const top = safeTop + 12;
     const bx = 14, bw = W - 28;
     // experience: a slim bar with a hexagon level badge
     const by = top + 9, bh = 7;
@@ -2516,6 +2546,7 @@
     awaken: id => { aw[id] = true; recalc(); },
     damage: n => { hp -= n; if (hp <= 0) { if (aw.vit && !revived) { revived = true; hp = S.maxHp; invuln = 2.5; shockwave(); } else { hp = 0; gameOver(); } } },
     reset: resetGame,
+    timing: () => { const t0 = performance.now(); for (let i = 0; i < 60; i++) update(1 / 60); const t1 = performance.now(); for (let i = 0; i < 60; i++) render(); const t2 = performance.now(); const parts = {}; for (const [n, f] of [['ground', drawGround], ['world', drawWorld], ['effects', drawEffects], ['ambient', drawAmbient], ['hud', drawHud]]) { const a = performance.now(); for (let i = 0; i < 60; i++) f(); parts[n] = +((performance.now() - a) / 60).toFixed(2); } return { updateMs: +((t1 - t0) / 60).toFixed(2), renderMs: +((t2 - t1) / 60).toFixed(2), parts }; },
     sim: (o = {}) => { // headless bot for balance testing
       resetGame();
       if (o.up) for (const k in o.up) up[k] = o.up[k];
