@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '25-laser1-gap0.6';
+  const BUILD = '26-nogap';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -1118,18 +1118,14 @@
     const boss = n % 5 === 0;
     waveTotal = Math.min(120, boss ? 8 + n * 3 : 12 + n * 5);
     waveSpawned = 0; spawnTimer = 0.1;
-    waveBannerT = 2.4; waveBannerText = 'WAVE ' + n;
+    waveBannerT = 1.5; waveBannerText = 'WAVE ' + n;
     waveBannerSub = boss ? 'ボスウェーブ' : `敵 ${waveTotal}体`;
     if (boss) spawnBoss();
   }
-  function endWave() {
-    wavePhase = 'clear'; interTimer = 0.6;
-    const heal = Math.round(S.maxHp * 0.25);
-    hp = Math.min(S.maxHp, hp + heal);
-    waveBannerT = 2.2; waveBannerText = 'WAVE ' + wave + ' CLEAR'; waveBannerSub = `体力 +${heal}`;
-    popups.push({ x: player.x, y: player.y - 70, text: '+' + heal, life: 1, color: '#6fffd0' });
-    burst(player.x, player.y - 30, '#6fffd0', 24);
-    rings.push({ t: 0 });
+  function endWave() { // no clear screen: heal a little, sweep up the gems, and go straight on
+    hp = Math.min(S.maxHp, hp + Math.round(S.maxHp * 0.15));
+    for (const g of gems) g.mag = true;
+    startWave(wave + 1);
   }
   function updateWave(dt) {
     if (wavePhase === 'spawn') {
@@ -1144,10 +1140,6 @@
       }
       if (spawnTimer < 0) spawnTimer = 0;
       if (waveSpawned >= waveTotal && enemies.length === 0) endWave();
-    } else {
-      for (const g of gems) g.mag = true; // sweep up everything between waves
-      interTimer -= dt;
-      if (interTimer <= 0) startWave(wave + 1);
     }
   }
   function spawnBoss() {
