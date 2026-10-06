@@ -540,22 +540,20 @@
     P(g, [[14, 48], [20, 48], [21, 56], [14, 57]], '#2a2030', MOON);
     glow(g, 17.5, 53, 11, '255,170,60', 0.85); E(g, 17.5, 53, 2.2, 2.2, '#ffe0a0', false);
     // head: pale skin, spiky silver hair
-    P(g, [[26, 30], [40, 30], [42, 36], [37, 42], [29, 42], [24, 36]], '#f2dccb', MOON);
+    P(g, [[25, 25], [41, 25], [43, 33], [38, 42], [29, 42], [24, 34]], '#f2dccb', MOON);
     P(g, [[22, 30], [20, 14], [27, 21], [29, 6], [34, 19], [41, 4], [42, 20], [49, 12], [44, 29], [38, 24], [30, 25]], '#e4ecf6', 'rgba(255,255,255,0.95)');
     P(g, [[24, 29], [32, 22], [34, 28], [27, 33]], '#cfd9e8', false);
     eye(g, 37.5, 33, 2.6, 1.7, '255,170,40', -0.2);
     line(g, [[33, 30.2], [40, 31]], '#3a2a30', 1.1);
     line(g, [[34, 39], [38, 38.4]], '#a0705a', 1);
-    // staff with a floating amber crystal
-    line(g, [[47, 38], [47, 76]], '#241c2c', 3.2);
-    line(g, [[46.2, 40], [46.2, 74]], 'rgba(255,246,205,0.4)', 1);
-    for (const y of [46, 62]) P(g, [[44.5, y], [49.5, y], [49.5, y + 2.4], [44.5, y + 2.4]], '#f2c14a', false);
-    line(g, [[41, 46], [46, 52]], '#1c1426', 4.4);
-    E(g, 46.5, 52, 2.6, 2.6, '#f2dccb', false);
-    glow(g, 47, 32, 15, '255,190,70', 0.95);
-    P(g, [[47, 22], [52, 32], [47, 42], [42, 32]], '#ffc860', 'rgba(255,255,255,0.95)');
-    P(g, [[47, 22], [52, 32], [47, 32]], '#fff3c0', false);
-    E(g, 47, 32, 2.2, 2.2, '#ffffff', false);
+    // right arm levels an oversized occult revolver
+    line(g, [[40, 42], [49, 46]], '#1c1426', 4.6);
+    P(g, [[46, 42], [58, 41], [63, 43], [63, 47], [56, 47], [54, 54], [49, 54], [50, 47], [46, 47]], '#2a2a36', 'rgba(255,255,255,0.9)');
+    P(g, [[56, 41], [63, 43], [63, 47], [56, 47]], '#3a3a48', false);
+    line(g, [[50, 44.5], [62, 44.5]], '#ffb040', 1.3);
+    E(g, 50.5, 49.5, 2.6, 2.6, '#f2dccb', false);
+    glow(g, 63.5, 44.5, 9, '255,180,60', 0.85);
+    E(g, 63, 44.5, 1.6, 1.6, '#fff0c0', false);
     g.restore();
   }
   const playerFrames = [0, 1, 2, 3].map(i => mk(PW, PH, g => drawHero(g, i)));
@@ -1005,8 +1003,8 @@
     const lv = k => Math.max(0, up[k] - 1);
     S.mis = { n: cnt[up.missile] * (aw.missile ? 2 : 1) + (aw.missile ? 2 : 0), cd: 2.4 * Math.pow(0.9, lv('missile')) * cm * (aw.missile ? 0.75 : 1),
       dmg: Math.round(24 * (1 + 0.3 * lv('missile')) * dm), r: aw.missile ? 85 : 58 };
-    S.las = { chain: [0, 2, 3, 5, 7, 10][up.laser] + (aw.laser ? 8 : 0), n: [0, 3, 3, 4, 4, 5][up.laser] + (aw.laser ? 3 : 0), cd: 4 * Math.pow(0.92, lv('laser')) * cm, dur: (0.55 + 0.05 * up.laser) * (aw.laser ? 1.5 : 1),
-      dmg: Math.round(6 * (1 + 0.25 * lv('laser')) * dm), w: aw.laser ? 34 : 24 };
+    S.las = { chain: [0, 1, 2, 4, 6, 9][up.laser] + (aw.laser ? 8 : 0), n: [0, 3, 3, 4, 4, 5][up.laser] + (aw.laser ? 3 : 0), cd: 6 * Math.pow(0.88, lv('laser')) * cm, dur: (0.5 + 0.05 * up.laser) * (aw.laser ? 1.5 : 1),
+      dmg: Math.round(3 * (1 + 0.4 * lv('laser')) * dm * (aw.laser ? 1.3 : 1)), w: aw.laser ? 34 : 24 };
     S.bmb = { n: cnt[up.bomb], cd: 3.2 * Math.pow(0.92, lv('bomb')) * cm, dmg: Math.round(36 * (1 + 0.3 * lv('bomb')) * dm),
       r: (80 + 8 * up.bomb) * (aw.bomb ? 1.25 : 1) };
   }
@@ -1014,14 +1012,14 @@
 
   const UPGRADES = [
     { id: 'vit',    icon: '命', name: '生命の灯',   desc: '最大HP +20・少し回復・自然回復が強化', max: 5, color: '#ff6a9a', aname: '不死の誓い', adesc: '倒れても一度だけ全回復で蘇り、周囲を吹き飛ばす' },
-    { id: 'bolt',   icon: '魔', name: '魔弾',       desc: '魔弾の威力 +25%・連射 +7%', max: 6, color: '#ffb347', aname: '天穹の裁き', adesc: '魔弾が貫通・爆発・追尾し、威力も跳ね上がる' },
-    { id: 'dmg',    icon: '攻', name: '魔力増幅',   desc: '弾の威力 +25%',          max: 6, color: '#ff8a3d', aname: '業火の魔弾',   adesc: '命中すると爆発し、周囲の敵にもダメージ' },
-    { id: 'rate',   icon: '速', name: '高速詠唱',   desc: '発射間隔 -15%',          max: 5, color: '#ffd23f', aname: '無詠唱',       adesc: '発射間隔がさらに大幅に短くなる' },
-    { id: 'count',  icon: '数', name: '多重詠唱',   desc: '同時に撃つ弾 +1',        max: 3, color: '#ff6a8a', aname: '星屑の嵐',     adesc: '3回に1回、全方位へ弾を放つ' },
-    { id: 'pierce', icon: '貫', name: '貫通の魔弾', desc: '敵を1体多く貫通',        max: 3, color: '#b58aef', aname: '無限貫通',     adesc: '弾がすべての敵を貫通する' },
+    { id: 'bolt',   icon: '魔', name: '弾丸',       desc: '弾丸の威力 +25%・連射 +7%', max: 6, color: '#ffb347', aname: '天穹の裁き', adesc: '弾丸が貫通・爆発・追尾し、威力も跳ね上がる' },
+    { id: 'dmg',    icon: '攻', name: '火力強化',   desc: '弾の威力 +25%',          max: 6, color: '#ff8a3d', aname: '業火の弾丸',   adesc: '命中すると爆発し、周囲の敵にもダメージ' },
+    { id: 'rate',   icon: '速', name: '速射',       desc: '発射間隔 -15%',          max: 5, color: '#ffd23f', aname: '無限装填',       adesc: '発射間隔がさらに大幅に短くなる' },
+    { id: 'count',  icon: '数', name: '多連装',     desc: '同時に撃つ弾 +1',        max: 3, color: '#ff6a8a', aname: '星屑の嵐',     adesc: '3回に1回、全方位へ弾を放つ' },
+    { id: 'pierce', icon: '貫', name: '徹甲弾',     desc: '敵を1体多く貫通',        max: 3, color: '#b58aef', aname: '無限貫通',     adesc: '弾がすべての敵を貫通する' },
     { id: 'move',   icon: '足', name: '軽やかな足', desc: '移動速度 +10%',          max: 4, color: '#6ad8ff', aname: '疾風の結界',   adesc: '周囲の敵を常に切り刻み、移動も加速' },
     { id: 'magnet', icon: '吸', name: '引き寄せ',   desc: '宝石を吸い込む範囲 +40%', max: 4, color: '#7dff8a', aname: '宝石の嵐',     adesc: '全ての宝石を引き寄せ、経験値1.5倍' },
-    { id: 'range',  icon: '射', name: '遠見の瞳',   desc: '射程 +20%',              max: 4, color: '#8fb8ff', aname: '千里眼',       adesc: '射程が大幅に伸び、弾が敵を追尾する' },
+    { id: 'range',  icon: '射', name: 'スコープ',   desc: '射程 +20%',              max: 4, color: '#8fb8ff', aname: '千里眼',       adesc: '射程が大幅に伸び、弾が敵を追尾する' },
     { id: 'missile', icon: '誘', name: 'ミサイル', ndesc: '新スキル: 追尾ミサイルを撃ち、爆発で範囲攻撃', desc: 'ミサイルの威力・本数・連射が強化', max: 5, color: '#ff6a4a', aname: 'ミサイルの嵐', adesc: '大量のミサイルを撃ち、爆発範囲も拡大' },
     { id: 'laser',  icon: '光', name: 'レーザー', ndesc: '新スキル: 背後から3本のレーザーが別々の敵へ飛び、連鎖する', desc: 'レーザーの威力・本数・連鎖数が強化', max: 5, color: '#6af0ff', aname: 'オーバーレーザー', adesc: 'レーザーがさらに3本増えて太くなり、連鎖も爆発的に増える' },
     { id: 'bomb',   icon: '爆', name: '爆弾', ndesc: '新スキル: 足元に爆弾を置き、範囲爆発', desc: '爆弾の威力・範囲・個数が強化', max: 5, color: '#ffb040', aname: '連鎖爆弾', adesc: '爆発が小さな爆弾を生み、連鎖して爆発する' },
@@ -1280,7 +1278,7 @@
     if (weapon.timer <= 0) {
       const target = nearestEnemy(S.range);
       if (target) {
-        const ox = player.x + player.face * 18, oy = player.y - 50;
+        const ox = player.x + player.face * 28, oy = player.y - 27;
         const base = Math.atan2(target.y - target.t.cy - oy, target.x - ox);
         for (let i = 0; i < S.count; i++) fireBolt(ox, oy, base + (i - (S.count - 1) / 2) * 0.2);
         volley++;
@@ -1362,7 +1360,7 @@
   // nobody else has picked), runs through everything on the way, then bends from enemy to enemy,
   // preferring enemies that no other laser has claimed yet.
   function laserGeom(L, claimed) {
-    const ox = player.x - player.face * 21, oy = player.y - 42;
+    const ox = player.x - player.face * 16, oy = player.y - 34;
     if (L.tg) L.a = Math.atan2(L.tg.y - L.tg.t.cy - oy, L.tg.x - ox);
     const dx = Math.cos(L.a), dy = Math.sin(L.a);
     const hit = new Set(), targets = [];
@@ -1401,7 +1399,7 @@
     L.pts = pts; L.targets = targets;
   }
   function updateSkills(dt) {
-    const ox = player.x, oy = player.y - 46;
+    const ox = player.x, oy = player.y - 36;
     if (up.missile > 0) {
       wt.mis -= dt;
       if (wt.mis <= 0) {
@@ -1818,7 +1816,7 @@
       items.push({ y: e.y, t: 1, e });
     }
     const px = player.x - camL, py = player.y - camT;
-    shadow(px, py + 2, 18, 6, 0.32);
+    shadow(px, py + 2, 13, 4.5, 0.32);
     items.push({ y: player.y, t: 2 });
     for (const b of bombs) items.push({ y: b.y, t: 3, b });
     items.sort((a, b) => a.y - b.y);
@@ -1902,7 +1900,7 @@
     const frame = player.moving ? (Math.floor(player.walk) % 4) : 0;
     const breathe = player.moving ? 0 : Math.sin(clock * 3) * 0.8;
     if (up.laser > 0) { // laser emitter floating behind the hero
-      const ex = px - player.face * 21, ey = py - 42 + breathe, active = lasers.length > 0;
+      const ex = px - player.face * 16, ey = py - 34 + breathe, active = lasers.length > 0;
       const p = 0.65 + 0.35 * Math.sin(clock * 6);
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = rg(ctx, ex, ey, 0, ex, ey, active ? 26 : 16, [[0, `rgba(140,245,255,${(active ? 0.9 : 0.45) * p})`], [1, 'rgba(60,200,255,0)']]);
@@ -1912,22 +1910,22 @@
     }
     ctx.save();
     ctx.translate(px, py + breathe);
-    ctx.scale(player.face * 1.2, 1.2);
+    ctx.scale(player.face * 0.9, 0.9);
     if (invuln > 0) ctx.globalAlpha = Math.sin(clock * 50) > 0 ? 1 : 0.4;
     ctx.drawImage(playerFrames[frame], -PAX, -PAY, PW, PH);
     ctx.restore();
     if (hp < S.maxHp) { // small health bar under the hero
-      const bw = 38, bx = px - bw / 2, by = py + 14, f = Math.max(0, hp / S.maxHp);
+      const bw = 38, bx = px - bw / 2, by = py + 10, f = Math.max(0, hp / S.maxHp);
       ctx.fillStyle = 'rgba(8,10,20,0.75)'; ctx.fillRect(bx - 1, by - 1, bw + 2, 6);
       ctx.fillStyle = f < 0.3 ? '#ff3a5a' : '#ff7a8a'; ctx.fillRect(bx, by, bw * f, 4);
     }
     // pulsing glow on the staff orb
-    const gx = px + player.face * 18, gy = py - 50 + breathe;
+    const gx = px + player.face * 28, gy = py - 27 + breathe;
     const pulse = 0.75 + Math.sin(clock * 5) * 0.25;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = rg(ctx, gx, gy, 0, gx, gy, 18, [[0, `rgba(255,200,90,${0.55 * pulse})`], [1, 'rgba(255,150,40,0)']]);
-    ctx.fillRect(gx - 18, gy - 18, 36, 36);
+    ctx.fillStyle = rg(ctx, gx, gy, 0, gx, gy, 12, [[0, `rgba(255,200,90,${0.5 * pulse})`], [1, 'rgba(255,150,40,0)']]);
+    ctx.fillRect(gx - 12, gy - 12, 24, 24);
     ctx.restore();
   }
 
@@ -2047,6 +2045,91 @@
   }
 
   // ---- UI skin: slim glass, hexagon badges, chamfered panels ----
+  // ---- hand-drawn skill emblems (drawn in a -1..1 box, scaled by r) ----
+  function drawSkillIcon(c, id, x, y, r, col) {
+    c.save(); c.translate(x, y); c.scale(r, r);
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    const W_ = '#ffffff';
+    const path = pts => { c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); };
+    const poly = (pts, fill) => { path(pts); c.closePath(); c.fillStyle = fill; c.fill(); };
+    const stroke = (pts, w, s) => { path(pts); c.lineWidth = w; c.strokeStyle = s; c.stroke(); };
+    const dot = (px, py, pr, fill) => { c.beginPath(); c.arc(px, py, pr, 0, TAU); c.fillStyle = fill; c.fill(); };
+    const bullet = (bx, by, s, rot) => {
+      c.save(); c.translate(bx, by); c.rotate(rot); c.scale(s, s);
+      poly([[-0.5, -0.2], [0.2, -0.2], [0.2, 0.2], [-0.5, 0.2]], col);
+      c.beginPath(); c.moveTo(0.2, -0.2); c.quadraticCurveTo(0.7, -0.15, 0.8, 0); c.quadraticCurveTo(0.7, 0.15, 0.2, 0.2); c.closePath(); c.fillStyle = W_; c.fill();
+      poly([[-0.2, -0.2], [-0.08, -0.2], [-0.08, 0.2], [-0.2, 0.2]], 'rgba(0,0,0,0.3)');
+      c.restore();
+    };
+    switch (id) {
+      case 'bolt': // a bullet with a speed trail
+        for (const [ty, a] of [[-0.34, 0.35], [0, 0.6], [0.34, 0.35]]) stroke([[-0.95, ty], [-0.5, ty]], 0.1, `rgba(255,255,255,${a})`);
+        bullet(0.1, 0, 1.15, 0);
+        break;
+      case 'dmg': { // flame
+        c.beginPath(); c.moveTo(0, -0.95); c.bezierCurveTo(0.2, -0.5, 0.75, -0.2, 0.65, 0.35); c.bezierCurveTo(0.6, 0.8, 0.2, 0.95, 0, 0.95);
+        c.bezierCurveTo(-0.2, 0.95, -0.62, 0.8, -0.65, 0.35); c.bezierCurveTo(-0.7, -0.05, -0.35, -0.2, -0.28, -0.55); c.bezierCurveTo(-0.1, -0.35, 0, -0.5, 0, -0.95); c.closePath();
+        c.fillStyle = col; c.fill();
+        c.beginPath(); c.moveTo(0, -0.1); c.bezierCurveTo(0.12, 0.15, 0.38, 0.3, 0.3, 0.6); c.bezierCurveTo(0.25, 0.85, 0.08, 0.88, 0, 0.88);
+        c.bezierCurveTo(-0.08, 0.88, -0.28, 0.85, -0.3, 0.6); c.bezierCurveTo(-0.34, 0.35, -0.05, 0.2, 0, -0.1); c.closePath();
+        c.fillStyle = W_; c.fill();
+        break; }
+      case 'rate': // lightning
+        poly([[0.25, -0.95], [-0.55, 0.1], [-0.05, 0.1], [-0.28, 0.95], [0.6, -0.2], [0.08, -0.2]], col);
+        stroke([[0.25, -0.95], [-0.55, 0.1], [-0.05, 0.1], [-0.28, 0.95]], 0.06, 'rgba(255,255,255,0.85)');
+        break;
+      case 'count': // three bullets in a fan
+        bullet(-0.58, 0.55, 0.85, -Math.PI / 2 - 0.3); bullet(0, 0.4, 0.85, -Math.PI / 2); bullet(0.58, 0.55, 0.85, -Math.PI / 2 + 0.3);
+        break;
+      case 'pierce': // a round punching through two plates
+        for (const px of [-0.15, 0.4]) { poly([[px - 0.1, -0.8], [px + 0.1, -0.8], [px + 0.1, -0.2], [px - 0.1, -0.2]], col); poly([[px - 0.1, 0.2], [px + 0.1, 0.2], [px + 0.1, 0.8], [px - 0.1, 0.8]], col); }
+        stroke([[-0.95, 0], [-0.1, 0]], 0.1, 'rgba(255,255,255,0.5)');
+        bullet(0.45, 0, 1.0, 0);
+        stroke([[0.85, -0.35], [0.95, -0.55]], 0.08, W_); stroke([[0.9, 0], [1.0, 0]], 0.08, W_);
+        break;
+      case 'move': // three speed chevrons
+        for (let i = 0; i < 3; i++) stroke([[-0.75 + i * 0.5, -0.6], [-0.25 + i * 0.5, 0], [-0.75 + i * 0.5, 0.6]], 0.22, i === 2 ? W_ : col);
+        break;
+      case 'magnet': { // horseshoe magnet
+        c.lineWidth = 0.36; c.strokeStyle = col; c.beginPath(); c.moveTo(-0.55, -0.7); c.lineTo(-0.55, 0.1); c.arc(0, 0.1, 0.55, Math.PI, 0, true); c.lineTo(0.55, -0.7); c.stroke();
+        poly([[-0.73, -0.78], [-0.37, -0.78], [-0.37, -0.45], [-0.73, -0.45]], W_); poly([[0.37, -0.78], [0.73, -0.78], [0.73, -0.45], [0.37, -0.45]], W_);
+        stroke([[-0.2, -0.95], [-0.1, -0.7]], 0.07, W_); stroke([[0.2, -0.95], [0.1, -0.7]], 0.07, W_);
+        break; }
+      case 'range': // scope reticle
+        c.lineWidth = 0.12; c.strokeStyle = col; c.beginPath(); c.arc(0, 0, 0.62, 0, TAU); c.stroke();
+        for (const [a, b, d, e] of [[0, -0.98, 0, -0.3], [0, 0.98, 0, 0.3], [-0.98, 0, -0.3, 0], [0.98, 0, 0.3, 0]]) stroke([[a, b], [d, e]], 0.12, col);
+        dot(0, 0, 0.12, W_);
+        break;
+      case 'vit': // heart with a pulse
+        c.beginPath(); c.moveTo(0, 0.85); c.bezierCurveTo(-1.05, 0.15, -0.85, -0.75, -0.35, -0.7); c.bezierCurveTo(-0.12, -0.68, 0, -0.5, 0, -0.35);
+        c.bezierCurveTo(0, -0.5, 0.12, -0.68, 0.35, -0.7); c.bezierCurveTo(0.85, -0.75, 1.05, 0.15, 0, 0.85); c.closePath(); c.fillStyle = col; c.fill();
+        stroke([[-0.55, 0.05], [-0.2, 0.05], [-0.08, -0.25], [0.12, 0.35], [0.24, 0.05], [0.55, 0.05]], 0.1, W_);
+        break;
+      case 'missile': // diagonal missile with a flame
+        c.rotate(-Math.PI / 4);
+        poly([[-0.95, 0], [-0.55, -0.16], [-0.55, 0.16]], 'rgba(255,200,80,0.95)');
+        poly([[-0.5, -0.2], [0.4, -0.2], [0.4, 0.2], [-0.5, 0.2]], W_);
+        poly([[0.4, -0.2], [0.95, 0], [0.4, 0.2]], col);
+        poly([[-0.5, -0.2], [-0.8, -0.55], [-0.2, -0.2]], col); poly([[-0.5, 0.2], [-0.8, 0.55], [-0.2, 0.2]], col);
+        poly([[0.0, -0.2], [0.14, -0.2], [0.14, 0.2], [0.0, 0.2]], col);
+        break;
+      case 'laser': // a beam that bends from node to node
+        stroke([[-0.85, 0.65], [-0.2, 0.05], [0.25, 0.5], [0.85, -0.55]], 0.3, col);
+        stroke([[-0.85, 0.65], [-0.2, 0.05], [0.25, 0.5], [0.85, -0.55]], 0.1, W_);
+        for (const [px, py] of [[-0.2, 0.05], [0.25, 0.5]]) { dot(px, py, 0.2, col); dot(px, py, 0.1, W_); }
+        break;
+      case 'bomb': // round bomb with a lit fuse
+        dot(-0.05, 0.2, 0.62, col); dot(-0.25, -0.02, 0.17, 'rgba(255,255,255,0.65)');
+        poly([[-0.2, -0.46], [0.18, -0.46], [0.14, -0.28], [-0.16, -0.28]], W_);
+        c.beginPath(); c.moveTo(0, -0.46); c.quadraticCurveTo(0.12, -0.8, 0.45, -0.78); c.lineWidth = 0.1; c.strokeStyle = W_; c.stroke();
+        poly([[0.45, -0.98], [0.52, -0.82], [0.68, -0.78], [0.52, -0.72], [0.45, -0.58], [0.38, -0.72], [0.22, -0.78], [0.38, -0.82]], '#ffd84a');
+        break;
+      default:
+        dot(0, 0, 0.5, col);
+    }
+    c.restore();
+  }
+
   function hexPath(c, x, y, r) {
     c.beginPath();
     for (let i = 0; i < 6; i++) { const a = i * TAU / 6 - Math.PI / 2; c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
@@ -2127,9 +2210,7 @@
       ctx.fillStyle = 'rgba(8,14,26,0.82)'; ctx.fill();
       ctx.strokeStyle = done ? '#ffc65a' : max ? '#ffffff' : u.color; ctx.lineWidth = done ? 2.6 : 1.8; ctx.stroke();
       if (done) { hexPath(ctx, cx, cyc, 9); ctx.strokeStyle = 'rgba(255,198,90,0.6)'; ctx.lineWidth = 1; ctx.stroke(); }
-      ctx.font = `900 13px ${FONT}`; ctx.textAlign = 'center';
-      ctx.fillStyle = done ? '#ffd88a' : u.color;
-      ctx.fillText(u.icon, cx, cyc + 4.6);
+      drawSkillIcon(ctx, u.id, cx, cyc, 8.2, done ? '#ffd88a' : u.color);
       if (!done) {
         ctx.font = `bold 9px ${FONT}`;
         ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.fillStyle = '#fff';
@@ -2323,9 +2404,7 @@
       ctx.fillStyle = '#0a1220'; ctx.fill();
       ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
       if (awaken) { hexPath(ctx, ix, iy, ir - 5); ctx.strokeStyle = 'rgba(255,198,90,0.55)'; ctx.lineWidth = 1; ctx.stroke(); }
-      ctx.font = `900 ${Math.round(ir * 1.0)}px ${FONT}`;
-      ctx.fillStyle = col; ctx.textAlign = 'center';
-      ctx.fillText(c.icon, ix, iy + ir * 0.34);
+      drawSkillIcon(ctx, c.id, ix, iy, ir * 0.62, col);
       // text
       const tx = ix + ir + 18;
       ctx.textAlign = 'left';
@@ -2448,6 +2527,7 @@
     awaken: id => { aw[id] = true; recalc(); },
     damage: n => { hp -= n; if (hp <= 0) { if (aw.vit && !revived) { revived = true; hp = S.maxHp; invuln = 2.5; shockwave(); } else { hp = 0; gameOver(); } } },
     reset: resetGame,
+    iconSheet: (x, c) => { UPGRADES.forEach((u, i) => { const px = 50 + (i % 6) * 100, py = 50 + Math.floor(i / 6) * 100; hexPath(x, px, py, 38); x.fillStyle = '#0a1220'; x.fill(); x.strokeStyle = u.color; x.lineWidth = 2; x.stroke(); drawSkillIcon(x, u.id, px, py, 24, u.color); }); return c.toDataURL('image/png'); },
     heroSheet: (x, c) => { for (let i = 0; i < 4; i++) x.drawImage(playerFrames[i], 10 + i * 220, 10, PW * 3.4, PH * 3.4); return c.toDataURL('image/png'); },
     sheet: () => { const T = ENEMY_TYPES.concat([BOSS_TYPE]); const c = document.createElement('canvas'); c.width = 1200; c.height = 780; const x = c.getContext('2d'); x.fillStyle = '#5bab52'; x.fillRect(0, 0, 1200, 780); x.drawImage(playerFrames[1], 10, 10, PW * 3, PH * 3); let px = 220, py = 10; for (const t of T) { if (t.boss) continue; const w = t.w * 2, h = t.h * 2; if (px + w > 1190) { px = 220; py += 200; } x.drawImage(t.spr[0], px, py, w, h); px += w + 6; } x.drawImage(BOSS_TYPE.spr[0], 10, 280, 320, 320); return c.toDataURL('image/png'); },
     dropMagnet: () => magnets.push({ x: player.x + 120, y: player.y + 30, ph: 0 }),
