@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '32-orange';
+  const BUILD = '33-roster23';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -985,6 +985,149 @@
     for (const [x, y, r] of [[26, 18, 13], [44, 12, 15], [62, 18, 13], [36, 24, 10], [54, 24, 10]]) { ell(g, x, y, r, r * 0.82, rg(g, x - 3, y - 4, 1, x, y, r, [[0, '#8fe07a'], [1, '#2f8a45']]), OL, 1.6); }
   }
 
+  // ---- ten more monsters in the same outlined, friendly style ----
+  function drawBeeC(g, f) {
+    const wy = f ? -3 : 2;
+    ell(g, 21, 22 + wy, 9, 5.5, 'rgba(225,244,255,0.9)', OL, 1.3, -0.5); ell(g, 43, 22 + wy, 9, 5.5, 'rgba(225,244,255,0.9)', OL, 1.3, 0.5);
+    g.strokeStyle = OL; g.lineWidth = 1.6; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(27, 26); g.quadraticCurveTo(24, 16, 20, 14); g.moveTo(37, 26); g.quadraticCurveTo(40, 16, 44, 14); g.stroke();
+    ell(g, 20, 13.5, 2, 2, '#ffd23f', OL, 1); ell(g, 44, 13.5, 2, 2, '#ffd23f', OL, 1);
+    poly(g, [[29, 49], [32, 59], [35, 49]], '#3a2a10', OL, 1.4);
+    ell(g, 32, 38, 15, 13, rg(g, 27, 31, 2, 32, 38, 18, [[0, '#ffe680'], [1, '#f2b01a']]), OL, 1.8);
+    g.save(); g.beginPath(); g.ellipse(32, 38, 14.4, 12.4, 0, 0, TAU); g.clip();
+    g.fillStyle = '#3a2a10'; g.fillRect(14, 39, 36, 4.4); g.fillRect(14, 47, 36, 4.4); g.restore();
+    for (const x of [26.5, 37.5]) { ell(g, x, 31, 3.8, 4.4, '#fff', OL, 1); ell(g, x + 0.6, 31.6, 2, 2.4, '#1a1020'); }
+    ell(g, 21, 36, 2.6, 1.6, 'rgba(255,120,120,0.5)'); ell(g, 43, 36, 2.6, 1.6, 'rgba(255,120,120,0.5)');
+    g.strokeStyle = '#3a2a10'; g.lineWidth = 1.2; g.beginPath(); g.arc(32, 35.5, 2.6, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke();
+  }
+  function drawCrabC(g, f) {
+    const c = f ? 3 : -3;
+    g.strokeStyle = OL; g.lineWidth = 3.4; g.lineCap = 'round';
+    for (const dir of [-1, 1]) for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(32 + dir * 12, 46 + i * 3); g.lineTo(32 + dir * (22 + i * 2), 50 + i * 3 + (i % 2 ? c : -c) * 0.4); g.stroke(); }
+    g.strokeStyle = '#e8483f'; g.lineWidth = 1.8;
+    for (const dir of [-1, 1]) for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(32 + dir * 12, 46 + i * 3); g.lineTo(32 + dir * (22 + i * 2), 50 + i * 3 + (i % 2 ? c : -c) * 0.4); g.stroke(); }
+    for (const dir of [-1, 1]) {
+      const cy = 30 + (dir > 0 ? c : -c) * 0.8;
+      g.strokeStyle = OL; g.lineWidth = 6; g.beginPath(); g.moveTo(32 + dir * 14, 38); g.lineTo(32 + dir * 22, cy + 4); g.stroke();
+      g.strokeStyle = '#e8483f'; g.lineWidth = 3.4; g.stroke();
+      g.beginPath(); g.moveTo(32 + dir * 22, cy + 8); g.quadraticCurveTo(32 + dir * 34, cy + 4, 32 + dir * 28, cy - 6); g.lineTo(32 + dir * 24, cy - 1); g.lineTo(32 + dir * 20, cy - 8); g.quadraticCurveTo(32 + dir * 14, cy, 32 + dir * 22, cy + 8); g.closePath();
+      g.fillStyle = rg(g, 32 + dir * 22, cy - 2, 1, 32 + dir * 24, cy, 12, [[0, '#ff8a7a'], [1, '#c02a22']]); g.fill(); g.strokeStyle = OL; g.lineWidth = 1.7; g.lineJoin = 'round'; g.stroke();
+    }
+    ell(g, 32, 42, 16, 11, rg(g, 26, 36, 2, 32, 42, 18, [[0, '#ff8a7a'], [1, '#c02a22']]), OL, 1.8);
+    for (const x of [26, 38]) { g.strokeStyle = OL; g.lineWidth = 1.8; g.beginPath(); g.moveTo(x, 34); g.lineTo(x, 28); g.stroke(); ell(g, x, 26, 3.8, 4.2, '#fff', OL, 1.2); ell(g, x + 0.5, 26.6, 2, 2.4, '#1a1020'); }
+    g.strokeStyle = '#6a1210'; g.lineWidth = 1.5; g.beginPath(); g.arc(32, 41, 4.4, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke();
+  }
+  function drawSnakeC(g, f) {
+    const w = f ? 3 : -3;
+    const path = () => { g.beginPath(); g.moveTo(8, 52 + w * 0.5); g.bezierCurveTo(20, 38, 36, 62 + w, 46, 46); g.bezierCurveTo(54, 34, 34, 34 + w * 0.4, 38, 22); };
+    g.lineCap = 'round'; path(); g.strokeStyle = OL; g.lineWidth = 13; g.stroke();
+    path(); g.strokeStyle = '#6cc84a'; g.lineWidth = 9.4; g.stroke();
+    path(); g.strokeStyle = '#a6e870'; g.lineWidth = 3; g.setLineDash([2, 7]); g.stroke(); g.setLineDash([]);
+    ell(g, 38, 17, 9.4, 8, rg(g, 34, 13, 1, 38, 17, 11, [[0, '#a6e870'], [1, '#4aa030']]), OL, 1.8);
+    for (const x of [34.4, 41.6]) { ell(g, x, 15.5, 2.6, 3.2, '#fff', OL, 1); ell(g, x + 0.5, 16, 1.4, 1.8, '#1a1020'); }
+    g.strokeStyle = '#e8283a'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(38, 24); g.lineTo(38, 29); g.lineTo(35.5, 31.5); g.moveTo(38, 29); g.lineTo(40.5, 31.5); g.stroke();
+  }
+  function drawPumpkinC(g, f) {
+    const sq = f ? 1.07 : 0.95;
+    g.save(); g.translate(32, 56); g.scale(sq, 2 - sq);
+    for (const [x, rx] of [[-11, 11], [11, 11], [0, 12]]) ell(g, x, -17, rx, 17, rg(g, x - 3, -24, 2, x, -17, 20, [[0, '#ffb04a'], [1, '#d8601a']]), OL, 1.8);
+    poly(g, [[-3, -33], [3, -33], [5, -41], [-1, -41]], '#6a8a2a', OL, 1.4);
+    poly(g, [[-13, -22], [-6, -18], [-13, -15]], '#fff3a0', OL, 1); poly(g, [[13, -22], [6, -18], [13, -15]], '#fff3a0', OL, 1);
+    g.beginPath(); g.moveTo(-9, -9); g.lineTo(-5, -12); g.lineTo(-2, -9); g.lineTo(2, -12); g.lineTo(5, -9); g.lineTo(9, -12); g.lineTo(7, -4); g.lineTo(-7, -4); g.closePath();
+    g.fillStyle = '#fff3a0'; g.fill(); g.strokeStyle = OL; g.lineWidth = 1.2; g.stroke();
+    g.restore();
+  }
+  function drawMummyC(g, f) {
+    const l = f ? 3 : -3, bd = '#e8dcc0';
+    for (const [x, o] of [[26, l], [38, -l]]) { rrect(g, x - 5 + o * 0.3, 44, 10, 13, 3); g.fillStyle = bd; g.fill(); g.strokeStyle = OL; g.lineWidth = 1.6; g.stroke(); }
+    rrect(g, 20, 26, 24, 24, 7); g.fillStyle = lg(g, 20, 26, 44, 50, [[0, '#fff6e0'], [1, '#d4c4a0']]); g.fill(); g.strokeStyle = OL; g.lineWidth = 1.8; g.stroke();
+    g.strokeStyle = 'rgba(110,90,50,0.55)'; g.lineWidth = 1.2; for (const y of [31, 36, 41, 46]) { g.beginPath(); g.moveTo(20.6, y); g.lineTo(43.4, y + 1.5); g.stroke(); }
+    for (const dir of [-1, 1]) { rrect(g, dir < 0 ? 8 : 44, 28 + (dir > 0 ? l : -l) * 0.4, 12, 7, 3); g.fillStyle = bd; g.fill(); g.strokeStyle = OL; g.lineWidth = 1.6; g.stroke(); }
+    ell(g, 32, 17, 11, 11, rg(g, 28, 12, 1, 32, 17, 13, [[0, '#fff6e0'], [1, '#d4c4a0']]), OL, 1.8);
+    g.fillStyle = '#2a1a20'; g.fillRect(22, 14, 20, 7);
+    for (const x of [27.5, 36.5]) { ell(g, x, 17.5, 2.8, 2.6, '#fff'); ell(g, x + 0.5, 17.5, 1.3, 1.6, '#e8283a'); }
+    g.strokeStyle = 'rgba(110,90,50,0.6)'; g.lineWidth = 1.3; g.beginPath(); g.moveTo(21.5, 10); g.lineTo(40, 23); g.moveTo(24, 24); g.lineTo(42, 11); g.stroke();
+    g.strokeStyle = '#6a3a3a'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(28, 25); g.lineTo(36, 25); g.stroke();
+  }
+  function drawImpC(g, f) {
+    const wy = f ? -4 : 3;
+    for (const dir of [-1, 1]) { g.beginPath(); g.moveTo(32 + dir * 8, 32); g.quadraticCurveTo(32 + dir * 22, 16 + wy, 32 + dir * 26, 26 + wy); g.quadraticCurveTo(32 + dir * 22, 28, 32 + dir * 20, 34); g.quadraticCurveTo(32 + dir * 14, 30, 32 + dir * 8, 40); g.closePath();
+      g.fillStyle = lg(g, 32, 0, 32 + dir * 26, 0, [[0, '#c8282a'], [1, '#6a1218']]); g.fill(); g.strokeStyle = OL; g.lineWidth = 1.6; g.lineJoin = 'round'; g.stroke(); }
+    g.strokeStyle = OL; g.lineWidth = 3.2; g.lineCap = 'round'; g.beginPath(); g.moveTo(34, 50); g.quadraticCurveTo(48, 54, 50, 44); g.stroke();
+    g.strokeStyle = '#d8383a'; g.lineWidth = 1.6; g.stroke(); poly(g, [[48, 42], [52, 44], [49, 48]], '#d8383a', OL, 1);
+    ell(g, 32, 42, 9, 10, rg(g, 28, 36, 1, 32, 42, 12, [[0, '#ff7a6a'], [1, '#c8282a']]), OL, 1.7);
+    for (const x of [27, 37]) { g.beginPath(); g.ellipse(x, 56, 3.4, 2, 0, 0, TAU); g.fillStyle = '#6a1218'; g.fill(); g.strokeStyle = OL; g.lineWidth = 1.2; g.stroke(); }
+    ell(g, 32, 26, 11.5, 10.5, rg(g, 27, 21, 1, 32, 26, 14, [[0, '#ff8a7a'], [1, '#c8282a']]), OL, 1.8);
+    poly(g, [[22, 20], [20, 9], [28, 17]], '#6a1218', OL, 1.3); poly(g, [[42, 20], [44, 9], [36, 17]], '#6a1218', OL, 1.3);
+    for (const x of [27.5, 36.5]) { ell(g, x, 25, 3, 3.4, '#ffe680', OL, 1); ell(g, x + 0.4, 25.4, 1.4, 1.8, '#1a1020'); }
+    g.strokeStyle = '#4a0a10'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(24, 20); g.lineTo(30, 22.5); g.moveTo(40, 20); g.lineTo(34, 22.5); g.stroke();
+    g.beginPath(); g.arc(32, 29.5, 4.4, 0.1 * Math.PI, 0.9 * Math.PI); g.fillStyle = '#4a0a10'; g.fill(); poly(g, [[29.5, 31], [30.6, 33.4], [31.6, 31]], '#fff'); poly(g, [[32.4, 31], [33.4, 33.4], [34.5, 31]], '#fff');
+  }
+  function drawMimicC(g, f) {
+    const open = f ? 11 : 5;
+    for (const [x, d] of [[20, f ? 2 : -2], [44, f ? -2 : 2]]) { ell(g, x, 56 + d * 0.3, 5, 3, '#6a3a1a', OL, 1.4); }
+    rrect(g, 10, 36, 44, 20, 4); g.fillStyle = lg(g, 10, 36, 10, 56, [[0, '#b27a48'], [1, '#6a4020']]); g.fill(); g.strokeStyle = OL; g.lineWidth = 2; g.stroke();
+    g.fillStyle = '#4a0a18'; g.fillRect(12, 34, 40, 4);
+    for (let i = 0; i < 6; i++) poly(g, [[13 + i * 7, 36], [16.5 + i * 7, 41], [20 + i * 7, 36]], '#fff', OL, 1);
+    for (let i = 0; i < 5; i++) poly(g, [[16.5 + i * 7, 34], [20 + i * 7, 29 - open * 0.2], [23.5 + i * 7, 34]], '#fff', OL, 1);
+    ell(g, 32, 44, 9, 4, '#e8688a', OL, 1);
+    g.save(); g.translate(10, 34); g.rotate(-open * 0.045);
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -16); g.quadraticCurveTo(22, -28, 44, -16); g.lineTo(44, 0); g.closePath();
+    g.fillStyle = lg(g, 0, -26, 0, 0, [[0, '#d09a64'], [1, '#8a5a30']]); g.fill(); g.strokeStyle = OL; g.lineWidth = 2; g.stroke();
+    g.fillStyle = '#ffd23f'; for (const x of [10, 34]) { g.fillRect(x - 2, -22, 4, 22); g.strokeStyle = OL; g.lineWidth = 1; g.strokeRect(x - 2, -22, 4, 22); }
+    for (const x of [16, 28]) { ell(g, x, -12, 3.6, 4, '#ffe680', OL, 1.1); ell(g, x + 0.4, -11.6, 1.6, 2.2, '#c8283a'); }
+    g.strokeStyle = OL; g.lineWidth = 1.6; g.beginPath(); g.moveTo(11, -18); g.lineTo(19, -15); g.moveTo(33, -18); g.lineTo(25, -15); g.stroke();
+    g.restore();
+  }
+  function drawVampireC(g, f) {
+    const w = f ? 2.5 : -2.5;
+    g.beginPath(); g.moveTo(32, 20); g.lineTo(6, 34 + w); g.lineTo(12, 56); g.lineTo(22, 50); g.lineTo(32, 58); g.lineTo(42, 50); g.lineTo(52, 56); g.lineTo(58, 34 + w); g.closePath();
+    g.fillStyle = lg(g, 0, 20, 0, 58, [[0, '#2a1a3a'], [1, '#12081c']]); g.fill(); g.strokeStyle = OL; g.lineWidth = 2; g.lineJoin = 'round'; g.stroke();
+    g.beginPath(); g.moveTo(32, 24); g.lineTo(12, 36 + w * 0.6); g.lineTo(17, 52); g.lineTo(32, 50); g.closePath(); g.fillStyle = '#b8203a'; g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(32, 24); g.lineTo(52, 36 + w * 0.6); g.lineTo(47, 52); g.lineTo(32, 50); g.closePath(); g.fill(); g.stroke();
+    rrect(g, 24, 34, 16, 18, 5); g.fillStyle = '#1a1226'; g.fill(); g.stroke();
+    poly(g, [[22, 30], [32, 40], [42, 30], [38, 24], [32, 30], [26, 24]], '#f4ecf8', OL, 1.4);
+    ell(g, 32, 20, 10, 10.5, rg(g, 28, 15, 1, 32, 20, 13, [[0, '#fff0e6'], [1, '#e0c8c0']]), OL, 1.7);
+    g.beginPath(); g.moveTo(21, 19); g.quadraticCurveTo(24, 6, 32, 8); g.quadraticCurveTo(40, 6, 43, 19); g.quadraticCurveTo(38, 12, 32, 14); g.quadraticCurveTo(26, 12, 21, 19); g.closePath(); g.fillStyle = '#1a1226'; g.fill(); g.stroke();
+    for (const x of [27.5, 36.5]) { ell(g, x, 20.5, 2.8, 3, '#fff', OL, 1); ell(g, x + 0.4, 20.9, 1.4, 1.8, '#e8283a'); }
+    g.strokeStyle = '#4a0a18'; g.lineWidth = 1.6; g.beginPath(); g.arc(32, 25.5, 4, 0.1 * Math.PI, 0.9 * Math.PI); g.stroke();
+    poly(g, [[28.6, 26.4], [29.6, 29.6], [30.6, 26.6]], '#fff', OL, 0.8); poly(g, [[33.4, 26.6], [34.4, 29.6], [35.4, 26.4]], '#fff', OL, 0.8);
+  }
+  function drawOgreC(g, f) { // 88x88 box, feet at (44, 80)
+    const o = f ? 2 : -2;
+    for (const [x, d] of [[28, o], [50, -o]]) { rrect(g, x - 5, 66 + d * 0.4, 16, 14, 5); g.fillStyle = '#5a8a3a'; g.fill(); g.strokeStyle = OL; g.lineWidth = 2; g.stroke(); }
+    g.strokeStyle = OL; g.lineWidth = 9; g.lineCap = 'round'; g.beginPath(); g.moveTo(66, 38); g.lineTo(78 + o, 52); g.stroke(); g.strokeStyle = '#7ab04a'; g.lineWidth = 6; g.stroke();
+    g.save(); g.translate(78 + o, 52); g.rotate(-0.5 + o * 0.03);
+    rrect(g, -3, -34, 6, 38, 3); g.fillStyle = '#8a5a30'; g.fill(); g.strokeStyle = OL; g.lineWidth = 1.8; g.stroke();
+    g.beginPath(); g.moveTo(-8, -34); g.quadraticCurveTo(0, -52, 8, -34); g.closePath(); g.fillStyle = '#a8703a'; g.fill(); g.stroke();
+    g.restore();
+    ell(g, 44, 52, 26, 22, rg(g, 36, 40, 3, 44, 52, 30, [[0, '#9ad060'], [1, '#4a7a2a']]), OL, 2.2);
+    ell(g, 44, 58, 15, 11, 'rgba(235,245,190,0.4)');
+    rrect(g, 22, 62, 44, 9, 4); g.fillStyle = '#8a5a30'; g.fill(); g.stroke();
+    g.strokeStyle = OL; g.lineWidth = 9; g.beginPath(); g.moveTo(22, 40); g.lineTo(12 - o, 56); g.stroke(); g.strokeStyle = '#7ab04a'; g.lineWidth = 6; g.stroke();
+    ell(g, 44, 28, 16, 15, rg(g, 38, 22, 2, 44, 28, 18, [[0, '#a8d870'], [1, '#4a7a2a']]), OL, 2);
+    poly(g, [[30, 20], [24, 10], [34, 16]], '#7ab04a', OL, 1.4); poly(g, [[58, 20], [64, 10], [54, 16]], '#7ab04a', OL, 1.4);
+    for (const x of [38, 50]) { ell(g, x, 26, 4.4, 5, '#fff8d0', OL, 1.2); ell(g, x + 0.4, 27, 2.2, 2.8, '#1a1020'); }
+    g.strokeStyle = '#2a3a14'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(32, 20); g.lineTo(41, 23); g.moveTo(56, 20); g.lineTo(47, 23); g.stroke();
+    ell(g, 44, 36, 8, 4.4, '#3a1a14', OL, 1.2); poly(g, [[37, 33.6], [38.6, 29.6], [40.4, 34]], '#fff8e8', OL, 1); poly(g, [[51, 33.6], [49.4, 29.6], [47.6, 34]], '#fff8e8', OL, 1);
+  }
+  function drawDragonC(g, f) {
+    const wy = f ? -6 : 3;
+    for (const dir of [-1, 1]) { g.beginPath(); g.moveTo(32 + dir * 6, 30); g.quadraticCurveTo(32 + dir * 24, 10 + wy, 32 + dir * 30, 24 + wy); g.lineTo(32 + dir * 24, 26 + wy * 0.6); g.lineTo(32 + dir * 22, 34); g.lineTo(32 + dir * 14, 32); g.lineTo(32 + dir * 12, 40); g.closePath();
+      g.fillStyle = lg(g, 32, 0, 32 + dir * 30, 0, [[0, '#4aa84a'], [1, '#2a6a30']]); g.fill(); g.strokeStyle = OL; g.lineWidth = 1.7; g.lineJoin = 'round'; g.stroke(); }
+    g.strokeStyle = OL; g.lineWidth = 7; g.lineCap = 'round'; g.beginPath(); g.moveTo(36, 48); g.quadraticCurveTo(50, 56, 54, 46); g.stroke(); g.strokeStyle = '#5ac060'; g.lineWidth = 4.2; g.stroke();
+    poly(g, [[52, 42], [58, 45], [53, 50]], '#e8c84a', OL, 1);
+    ell(g, 32, 42, 13, 13, rg(g, 27, 35, 2, 32, 42, 16, [[0, '#8ae070'], [1, '#3a9a40']]), OL, 1.9);
+    ell(g, 32, 47, 8, 8, '#f2e6a0', OL, 1.1);
+    for (const x of [26, 38]) { g.beginPath(); g.ellipse(x, 56, 4, 2.4, 0, 0, TAU); g.fillStyle = '#3a9a40'; g.fill(); g.strokeStyle = OL; g.lineWidth = 1.2; g.stroke(); }
+    ell(g, 32, 24, 11, 10, rg(g, 28, 19, 1, 32, 24, 13, [[0, '#8ae070'], [1, '#3a9a40']]), OL, 1.8);
+    poly(g, [[23, 18], [20, 8], [29, 15]], '#f2e6a0', OL, 1.2); poly(g, [[41, 18], [44, 8], [35, 15]], '#f2e6a0', OL, 1.2);
+    for (const x of [28, 36]) { ell(g, x, 23, 3, 3.4, '#fff', OL, 1); ell(g, x + 0.4, 23.4, 1.5, 2, '#1a1020'); }
+    ell(g, 29, 30, 1.1, 1.2, '#2a6a30'); ell(g, 35, 30, 1.1, 1.2, '#2a6a30');
+    if (f) { poly(g, [[32, 32], [27, 40], [32, 38], [37, 40]], '#ff9a2a', OL, 1); poly(g, [[32, 33], [30, 37], [32, 36], [34, 37]], '#ffe680'); }
+  }
+
+
   const chestSpr = mk(48, 44, g => {
     glow(g, 24, 26, 24, '255,190,90', 0.55);
     P(g, [[8, 24], [40, 24], [42, 38], [6, 38]], '#2a3350', MOON);
@@ -1036,11 +1179,21 @@
     { name: 'reaper',    r: 12, cy: 30, hitR: 15, speed: 84,  hp: 90,  xp: 5,  w: 64, h: 64, ax: 32, ay: 56, sh: 13, color: '#8a5ad0', draw: drawReaperC,     minT: 105, weight: 2.4, fly: true, blink: true },
     { name: 'golem',     r: 24, cy: 46, hitR: 30, speed: 38,  hp: 220, xp: 10, w: 112, h: 112, ax: 56, ay: 100, sh: 30, color: '#9aa3b2', draw: drawGolem,    minT: 110, weight: 1.3, armor: 2 },
     { name: 'treant',    r: 22, cy: 38, hitR: 26, speed: 42,  hp: 280, xp: 12, w: 88, h: 88, ax: 44, ay: 80, sh: 28, color: '#7a9a5a', draw: drawTreantC,     minT: 125, weight: 1.1, armor: 3 },
+    { name: 'bee',      r: 10, cy: 26, hitR: 13, speed: 125, hp: 14,  xp: 1,  w: 64, h: 64, ax: 32, ay: 56, sh: 11, color: '#f2b01a', draw: drawBeeC,     minT: 20,  weight: 5,  fly: true, weave: 70 },
+    { name: 'crab',      r: 13, cy: 20, hitR: 16, speed: 50,  hp: 55,  xp: 3,  w: 64, h: 64, ax: 32, ay: 56, sh: 16, color: '#e8604a', draw: drawCrabC,    minT: 45,  weight: 4,  armor: 2 },
+    { name: 'snake',     r: 11, cy: 18, hitR: 14, speed: 92,  hp: 32,  xp: 2,  w: 64, h: 64, ax: 32, ay: 56, sh: 14, color: '#6cc060', draw: drawSnakeC,   minT: 55,  weight: 4,  weave: 40 },
+    { name: 'pumpkin',   r: 13, cy: 24, hitR: 16, speed: 60,  hp: 64,  xp: 3,  w: 64, h: 64, ax: 32, ay: 56, sh: 16, color: '#f08a2a', draw: drawPumpkinC, minT: 65,  weight: 4,  burst: true },
+    { name: 'mummy',     r: 13, cy: 28, hitR: 16, speed: 52,  hp: 85,  xp: 4,  w: 64, h: 64, ax: 32, ay: 56, sh: 15, color: '#e4d8b8', draw: drawMummyC,   minT: 80,  weight: 3.4 },
+    { name: 'imp',       r: 10, cy: 28, hitR: 13, speed: 108, hp: 40,  xp: 3,  w: 64, h: 64, ax: 32, ay: 56, sh: 11, color: '#e04a5a', draw: drawImpC,     minT: 90,  weight: 3.4, fly: true, blink: true },
+    { name: 'mimic',     r: 14, cy: 22, hitR: 17, speed: 72,  hp: 100, xp: 5,  w: 64, h: 64, ax: 32, ay: 56, sh: 17, color: '#b87a3a', draw: drawMimicC,   minT: 100, weight: 2.4, burst: true },
+    { name: 'vampire',   r: 12, cy: 30, hitR: 15, speed: 80,  hp: 105, xp: 6,  w: 64, h: 64, ax: 32, ay: 56, sh: 13, color: '#8a2a4a', draw: drawVampireC, minT: 112, weight: 2.2, fly: true, weave: 50 },
+    { name: 'ogre',      r: 22, cy: 38, hitR: 26, speed: 44,  hp: 300, xp: 12, w: 88, h: 88, ax: 44, ay: 80, sh: 28, color: '#8aa84a', draw: drawOgreC,    minT: 130, weight: 1.1, armor: 3 },
+    { name: 'dragon',    r: 16, cy: 34, hitR: 20, speed: 78,  hp: 160, xp: 8,  w: 64, h: 64, ax: 32, ay: 56, sh: 20, color: '#4aa88a', draw: drawDragonC,  minT: 140, weight: 1.4, fly: true, armor: 1 },
   ];
   const BOSS_TYPE = { name: 'ムーンイーター', boss: true, r: 36, cy: 70, hitR: 46, speed: 44, hp: 1000, xp: 10, w: 160, h: 160, ax: 80, ay: 148, sh: 48, color: '#e0508a', draw: drawDemon, armor: 2 };
-  const MINW = { ooze: 1, bat: 2, spider: 2, bonewalker: 3, ghost: 4, wisp: 4, hound: 5, ghoul: 6, sporeling: 6, knight: 7, reaper: 8, golem: 9, treant: 10 };
+  const MINW = { ooze: 1, bat: 2, spider: 2, bonewalker: 3, ghost: 4, wisp: 4, hound: 5, ghoul: 6, sporeling: 6, knight: 7, reaper: 8, golem: 9, treant: 10, bee: 2, crab: 3, snake: 4, pumpkin: 5, mummy: 6, imp: 7, mimic: 8, vampire: 9, ogre: 11, dragon: 12 };
   for (const t of ENEMY_TYPES) t.minW = MINW[t.name] || 1;
-  const TOUCH = { ooze: 6, bat: 5, spider: 7, bonewalker: 8, ghost: 8, wisp: 6, hound: 9, ghoul: 12, sporeling: 8, knight: 14, reaper: 12, golem: 22, treant: 24 };
+  const TOUCH = { ooze: 6, bat: 5, spider: 7, bonewalker: 8, ghost: 8, wisp: 6, hound: 9, ghoul: 12, sporeling: 8, knight: 14, reaper: 12, golem: 22, treant: 24, bee: 5, crab: 9, snake: 8, pumpkin: 10, mummy: 12, imp: 9, mimic: 14, vampire: 13, ogre: 24, dragon: 16 };
   for (const t of ENEMY_TYPES) t.dmg = TOUCH[t.name] || 8;
   BOSS_TYPE.dmg = 22;
   for (const t of ENEMY_TYPES.concat([BOSS_TYPE])) {
@@ -2714,7 +2867,7 @@
     damage: n => { hp -= n; if (hp <= 0) { if (aw.vit && !revived) { revived = true; hp = S.maxHp; invuln = 2.5; shockwave(); } else { hp = 0; gameOver(); } } },
     reset: resetGame,
     stats: () => JSON.parse(JSON.stringify({ S, speed: player.speed })),
-    sheetC: () => { const T = ENEMY_TYPES.concat([BOSS_TYPE]); const c = document.createElement('canvas'); c.width = 1200; c.height = 700; const x = c.getContext('2d'); x.fillStyle = '#5bab52'; x.fillRect(0, 0, 1200, 700); x.drawImage(playerFrames[1], 10, 10, PW * 3, PH * 3); let px = 220, py = 10; for (const t of T) { if (t.boss || t.w > 100) continue; const w = t.w * 2, h = t.h * 2; if (px + w > 1190) { px = 220; py += 170; } x.drawImage(t.spr[0], px, py, w, h); px += w + 6; } x.drawImage(ENEMY_TYPES.find(t => t.name === 'golem').spr[0], 10, 300, 280, 280); x.drawImage(ENEMY_TYPES.find(t => t.name === 'treant').spr[0], 300, 300, 240, 240); x.drawImage(BOSS_TYPE.spr[0], 560, 260, 340, 340); return c.toDataURL('image/png'); },
+    sheetC: () => { const T = ENEMY_TYPES.concat([BOSS_TYPE]); const c = document.createElement('canvas'); c.width = 1200; c.height = 1000; const x = c.getContext('2d'); x.fillStyle = '#5bab52'; x.fillRect(0, 0, 1200, 1000); x.drawImage(playerFrames[1], 10, 10, PW * 3, PH * 3); let px = 220, py = 10; const big = []; for (const t of T) { if (t.boss || t.w > 64) { big.push(t); continue; } const w = t.w * 2, h = t.h * 2; if (px + w > 1190) { px = 220; py += 140; } x.drawImage(t.spr[0], px, py, w, h); px += w + 6; } let bx = 10; for (const t of big) { const k = t.boss ? 340 : t.w * 2.4; x.drawImage(t.spr[0], bx, 640, k, k); bx += k + 6; } return c.toDataURL('image/png'); },
     timing: () => { const t0 = performance.now(); for (let i = 0; i < 60; i++) update(1 / 60); const t1 = performance.now(); for (let i = 0; i < 60; i++) render(); const t2 = performance.now(); const parts = {}; for (const [n, f] of [['ground', drawGround], ['world', drawWorld], ['effects', drawEffects], ['ambient', drawAmbient], ['hud', drawHud]]) { const a = performance.now(); for (let i = 0; i < 60; i++) f(); parts[n] = +((performance.now() - a) / 60).toFixed(2); } return { updateMs: +((t1 - t0) / 60).toFixed(2), renderMs: +((t2 - t1) / 60).toFixed(2), parts }; },
     sim: (o = {}) => { // headless bot for balance testing
       resetGame();
