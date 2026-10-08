@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '33-roster23';
+  const BUILD = '34-boltspd';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -1313,7 +1313,8 @@
     hp = Math.min(hp, S.maxHp);
     const bl = up.bolt - 1;
     S.damage = Math.round(10 * (1 + 0.25 * up.dmg) * (1 + 0.25 * bl) * (aw.bolt ? 1.5 : 1));
-    S.cooldown = 0.7 * Math.pow(0.85, up.rate) * Math.pow(0.93, bl) * (aw.rate ? 0.55 : 1);
+    S.cooldown = 0.7 * Math.pow(0.85, up.rate) * (aw.rate ? 0.55 : 1);
+    S.speed = 460 * (1 + 0.12 * bl);
     S.count = 1 + up.count + (aw.bolt ? 2 : 0);
     S.pierce = (aw.pierce ? 999 : up.pierce) + (aw.bolt ? 3 : 0);
     S.range = 230 * (1 + 0.2 * up.range) * (aw.range ? 1.6 : 1);
@@ -1334,7 +1335,7 @@
 
   const UPGRADES = [
     { id: 'vit',    icon: '命', name: '生命の灯',   desc: '最大HP +20・少し回復・自然回復が強化', max: 5, color: '#ff6a9a', aname: '不死の誓い', adesc: '倒れても一度だけ全回復で蘇り、周囲を吹き飛ばす' },
-    { id: 'bolt',   icon: '魔', name: '魔弾',       desc: '魔弾の威力 +25%・連射 +7%', max: 6, color: '#ffb347', aname: '天穹の裁き', adesc: '魔弾が貫通・爆発・追尾し、威力も跳ね上がる' },
+    { id: 'bolt',   icon: '魔', name: '魔弾',       desc: '魔弾の威力 +25%・弾速 +12%', max: 6, color: '#ffb347', aname: '天穹の裁き', adesc: '魔弾が貫通・爆発・追尾し、威力も跳ね上がる' },
     { id: 'dmg',    icon: '攻', name: '魔力増幅',   desc: '弾の威力 +25%',          max: 6, color: '#ff8a3d', aname: '業火の魔弾',   adesc: '命中すると爆発し、周囲の敵にもダメージ' },
     { id: 'rate',   icon: '速', name: '高速詠唱',   desc: '発射間隔 -15%',          max: 5, color: '#ffd23f', aname: '無詠唱',       adesc: '発射間隔がさらに大幅に短くなる' },
     { id: 'count',  icon: '数', name: '多重詠唱',   desc: '同時に撃つ弾 +1',        max: 3, color: '#ff6a8a', aname: '星屑の嵐',     adesc: '3回に1回、全方位へ弾を放つ' },
@@ -1586,8 +1587,8 @@
   }
   function fireBolt(ox, oy, a) {
     bolts.push({
-      x: ox, y: oy, vx: Math.cos(a) * BOLT_SPEED, vy: Math.sin(a) * BOLT_SPEED,
-      life: S.range / BOLT_SPEED * 1.25, pierce: S.pierce, hit: new Set(),
+      x: ox, y: oy, vx: Math.cos(a) * S.speed, vy: Math.sin(a) * S.speed,
+      life: S.range / S.speed * 1.25, pierce: S.pierce, hit: new Set(),
     });
   }
   function updateWeapon(dt) {
@@ -1622,7 +1623,7 @@
           while (diff > Math.PI) diff -= TAU;
           while (diff < -Math.PI) diff += TAU;
           const na = cur + Math.max(-6 * dt, Math.min(6 * dt, diff));
-          b.vx = Math.cos(na) * BOLT_SPEED; b.vy = Math.sin(na) * BOLT_SPEED;
+          b.vx = Math.cos(na) * S.speed; b.vy = Math.sin(na) * S.speed;
         }
       }
       b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
