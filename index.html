@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '34-boltspd';
+  const BUILD = '35-audio';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -1224,6 +1224,126 @@
   window.addEventListener('blur', () => keys.clear());
 
   // =====================================================================
+  // Audio: synthesized SFX + chiptune BGM (WebAudio, no files)
+  // =====================================================================
+  const AUD = (() => {
+    let ctx = null, master, sfxG, musG, noiseBuf;
+    let muted = false;
+    try { muted = localStorage.getItem('sg_mute') === '1'; } catch (e) {}
+    const last = {};
+    let musicOn = false, step = 0, nextT = 0, timer = 0, tempo = 132;
+    const mtof = n => 440 * Math.pow(2, (n - 69) / 12);
+    function init() {
+      if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      ctx = new AC();
+      master = ctx.createGain(); master.gain.value = muted ? 0 : 0.8; master.connect(ctx.destination);
+      sfxG = ctx.createGain(); sfxG.gain.value = 0.55; sfxG.connect(master);
+      musG = ctx.createGain(); musG.gain.value = 0.22; musG.connect(master);
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      if (musicOn) startSched();
+    }
+    function ok(name, gap) { const n = performance.now(); if (last[name] && n - last[name] < gap) return false; last[name] = n; return true; }
+    // one oscillator note with pitch slide and decay
+    function tone(dest, type, f0, f1, t0, dur, vol) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type; o.frequency.setValueAtTime(f0, t0);
+      if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(dest); o.start(t0); o.stop(t0 + dur + 0.02);
+    }
+    function noise(dest, t0, dur, vol, f0, f1, ftype) {
+      const s = ctx.createBufferSource(); s.buffer = noiseBuf;
+      const fl = ctx.createBiquadFilter(); fl.type = ftype || 'lowpass';
+      fl.frequency.setValueAtTime(f0, t0); fl.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t0 + dur);
+      const g = ctx.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      s.connect(fl); fl.connect(g); g.connect(dest); s.start(t0); s.stop(t0 + dur + 0.02);
+    }
+    const sfx = {
+      shot()    { if (!ok('shot', 70)) return; const t = ctx.currentTime; tone(sfxG, 'square', 880, 330, t, 0.09, 0.16); },
+      hit()     { if (!ok('hit', 45)) return; const t = ctx.currentTime; noise(sfxG, t, 0.05, 0.28, 3000, 900, 'bandpass'); tone(sfxG, 'triangle', 220, 120, t, 0.05, 0.18); },
+      kill()    { if (!ok('kill', 35)) return; const t = ctx.currentTime; const f = 300 + Math.random() * 120; tone(sfxG, 'square', f, f * 0.4, t, 0.12, 0.15); noise(sfxG, t, 0.1, 0.18, 2200, 300); },
+      gem()     { if (!ok('gem', 40)) return; const t = ctx.currentTime; const k = Math.min(8, gemChain); gemChain++; const f = mtof(76 + [0, 2, 4, 7, 9, 12, 14, 16][k]); tone(sfxG, 'sine', f, f, t, 0.1, 0.2); tone(sfxG, 'triangle', f * 2, f * 2, t, 0.07, 0.07); },
+      missile() { if (!ok('missile', 90)) return; const t = ctx.currentTime; noise(sfxG, t, 0.28, 0.2, 500, 3200, 'bandpass'); },
+      laser()   { if (!ok('laser', 160)) return; const t = ctx.currentTime; tone(sfxG, 'sawtooth', 1500, 220, t, 0.22, 0.12); tone(sfxG, 'square', 2400, 600, t, 0.12, 0.06); },
+      boom()    { if (!ok('boom', 80)) return; const t = ctx.currentTime; noise(sfxG, t, 0.5, 0.6, 1800, 60); tone(sfxG, 'sine', 120, 35, t, 0.4, 0.5); },
+      hurt()    { if (!ok('hurt', 150)) return; const t = ctx.currentTime; tone(sfxG, 'sawtooth', 260, 60, t, 0.28, 0.3); noise(sfxG, t, 0.15, 0.25, 1200, 200); },
+      levelup() { const t = ctx.currentTime; [72, 76, 79, 84].forEach((n, i) => { tone(sfxG, 'square', mtof(n), mtof(n), t + i * 0.07, 0.18, 0.14); tone(sfxG, 'triangle', mtof(n - 12), mtof(n - 12), t + i * 0.07, 0.2, 0.2); }); },
+      pick()    { const t = ctx.currentTime; tone(sfxG, 'square', mtof(79), mtof(79), t, 0.07, 0.15); tone(sfxG, 'square', mtof(86), mtof(86), t + 0.06, 0.16, 0.15); },
+      awaken()  { const t = ctx.currentTime; [60, 64, 67, 72, 76, 79, 84].forEach((n, i) => { tone(sfxG, 'sawtooth', mtof(n), mtof(n), t + i * 0.06, 0.4, 0.1); }); noise(sfxG, t, 0.8, 0.25, 400, 6000, 'bandpass'); },
+      chest()   { const t = ctx.currentTime; [67, 71, 74, 79, 83].forEach((n, i) => tone(sfxG, 'triangle', mtof(n), mtof(n), t + i * 0.05, 0.3, 0.22)); },
+      heart()   { const t = ctx.currentTime; tone(sfxG, 'sine', mtof(72), mtof(84), t, 0.25, 0.25); },
+      magnet()  { const t = ctx.currentTime; tone(sfxG, 'sine', 200, 1200, t, 0.45, 0.25); tone(sfxG, 'triangle', 400, 2400, t, 0.45, 0.1); },
+      wave()    { const t = ctx.currentTime; tone(sfxG, 'square', mtof(57), mtof(57), t, 0.14, 0.14); tone(sfxG, 'square', mtof(64), mtof(64), t + 0.12, 0.2, 0.14); },
+      boss()    { const t = ctx.currentTime; for (let i = 0; i < 3; i++) { tone(sfxG, 'sawtooth', mtof(45), mtof(43), t + i * 0.28, 0.26, 0.3); tone(sfxG, 'square', mtof(33), mtof(31), t + i * 0.28, 0.26, 0.2); } },
+      dead()    { const t = ctx.currentTime; [67, 64, 60, 55].forEach((n, i) => tone(sfxG, 'triangle', mtof(n), mtof(n) * 0.97, t + i * 0.22, 0.5, 0.3)); noise(sfxG, t, 0.7, 0.3, 1500, 80); },
+    };
+    let gemChain = 0, gemT = 0;
+    setInterval(() => { if (performance.now() - (last.gem || 0) > 400) gemChain = 0; }, 200);
+    // ---- music: Am - F - C - G, bass + arp + drums ----
+    const CH = [[45, 57, 60, 64], [41, 53, 57, 60], [48, 60, 64, 67], [43, 55, 59, 62]];
+    const LEAD = [ // 16 steps per bar, 0 = rest (scale degrees as midi)
+      [76, 0, 0, 79, 0, 76, 0, 0, 72, 0, 0, 74, 0, 72, 0, 0], [77, 0, 0, 81, 0, 77, 0, 0, 74, 0, 0, 77, 0, 74, 0, 0],
+      [76, 0, 0, 79, 0, 84, 0, 0, 79, 0, 76, 0, 72, 0, 0, 0], [74, 0, 0, 79, 0, 83, 0, 0, 79, 0, 74, 0, 71, 0, 0, 0]];
+    function playStep(s, t) {
+      const bar = (s >> 4) % 4, i = s & 15, ch = CH[bar];
+      const sixteenth = 60 / tempo / 4;
+      // drums
+      if (i % 4 === 0) { tone(musG, 'sine', 140, 40, t, 0.14, 0.9); }
+      if (i % 8 === 4) noise(musG, t, 0.12, 0.35, 5000, 1500, 'highpass');
+      if (i % 2 === 1) noise(musG, t, 0.03, 0.12, 8000, 6000, 'highpass');
+      // bass (8th notes, root / octave)
+      if (i % 2 === 0) tone(musG, 'triangle', mtof(ch[0] + ((i >> 1) % 4 === 2 ? 12 : 0)), mtof(ch[0] + ((i >> 1) % 4 === 2 ? 12 : 0)), t, sixteenth * 1.8, 0.55);
+      // arpeggio
+      const an = ch[1 + [0, 1, 2, 1][i & 3] % 3] + 12;
+      tone(musG, 'square', mtof(an), mtof(an), t, sixteenth * 0.8, 0.07);
+      // lead (every other 2 bars so it breathes)
+      const ln = LEAD[bar][i];
+      if (ln && ((s >> 6) & 1) === 1) tone(musG, 'square', mtof(ln), mtof(ln), t, sixteenth * 2.5, 0.12);
+    }
+    function sched() {
+      while (nextT < ctx.currentTime + 0.18) {
+        playStep(step, nextT);
+        nextT += 60 / tempo / 4; step = (step + 1) % 256;
+      }
+    }
+    function startSched() { if (!ctx || timer) return; step = 0; nextT = ctx.currentTime + 0.05; timer = setInterval(sched, 40); }
+    function stopSched() { clearInterval(timer); timer = 0; }
+    document.addEventListener('visibilitychange', () => { if (!ctx) return; if (document.hidden) ctx.suspend(); else ctx.resume(); });
+    const api = {
+      init,
+      sfx: n => { if (!ctx || muted) return; try { sfx[n](); } catch (e) {} },
+      music(on) { musicOn = on; if (!ctx) return; if (on) startSched(); else stopSched(); },
+      tempo(t) { tempo = t; },
+      get muted() { return muted; },
+      toggle() {
+        muted = !muted;
+        try { localStorage.setItem('sg_mute', muted ? '1' : '0'); } catch (e) {}
+        if (ctx) master.gain.value = muted ? 0 : 0.8;
+        return muted;
+      },
+    };
+    return api;
+  })();
+  const sfx = AUD.sfx;
+  // mute button (works on desktop and phone)
+  (() => {
+    const b = document.createElement('button');
+    const upd = () => { b.textContent = AUD.muted ? '🔇' : '🔊'; };
+    b.style.cssText = 'position:fixed;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));width:44px;height:44px;border-radius:22px;border:2px solid rgba(255,255,255,.7);background:rgba(20,30,20,.45);font-size:20px;line-height:1;padding:0;z-index:5;touch-action:manipulation;cursor:pointer';
+    upd();
+    b.addEventListener('pointerdown', e => e.stopPropagation());
+    b.addEventListener('click', () => { AUD.init(); AUD.toggle(); upd(); b.blur(); });
+    document.body.appendChild(b);
+    window.addEventListener('keydown', e => { if (e.key.toLowerCase() === 'm') { AUD.init(); AUD.toggle(); upd(); } });
+    const unlock = () => { AUD.init(); AUD.music(true); };
+    for (const ev of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(ev, unlock, { once: false, passive: true });
+  })();
+
+  // =====================================================================
   // Input: virtual stick (floating, appears where touched)
   // =====================================================================
   const STICK_RADIUS = 60;
@@ -1374,6 +1494,7 @@
     return pool.slice(0, 3);
   }
   function showScreen(m, list, delay) {
+    sfx(m === 'awaken' ? 'awaken' : 'levelup');
     mode = m; choices = list; state = 'levelup'; levelupDelay = delay; stick.active = false;
   }
   function nextScreen() {
@@ -1397,6 +1518,7 @@
     recalc();
     if (mode !== 'awaken' && choices[i].id === 'vit') hp = Math.min(S.maxHp, hp + 40);
     rings.push({ t: 0 });
+    sfx('pick');
     nextScreen();
   }
   function addXp(v) {
@@ -1448,6 +1570,8 @@
     waveTotal = Math.min(120, boss ? 8 + n * 3 : 12 + n * 5);
     waveSpawned = 0; spawnTimer = 0.1;
     waveBannerT = 1.2; waveBannerText = 'WAVE ' + n;
+    sfx(boss ? 'boss' : 'wave');
+    AUD.tempo(boss ? 150 : 132);
     waveBannerSub = boss ? 'ボスウェーブ' : `敵 ${waveTotal}体`;
     for (let i = 0, k = Math.min(6, Math.floor(waveTotal / 3)); i < k; i++) { if (spawnEnemy(false)) waveSpawned++; }
     if (boss) spawnBoss();
@@ -1575,6 +1699,7 @@
   }
   function hitEnemy(e, dmg, vx, vy, quiet) {
     dmg = Math.max(1, dmg - (e.t.armor || 0));
+    if (!quiet) sfx('hit');
     e.hp -= dmg;
     e.flash = 0.09;
     const d = Math.hypot(vx, vy) || 1;
@@ -1586,6 +1711,7 @@
     }
   }
   function fireBolt(ox, oy, a) {
+    sfx('shot');
     bolts.push({
       x: ox, y: oy, vx: Math.cos(a) * S.speed, vy: Math.sin(a) * S.speed,
       life: S.range / S.speed * 1.25, pierce: S.pierce, hit: new Set(),
@@ -1663,6 +1789,7 @@
   // ---- sub-weapons: missiles, lasers, bombs ----
   function explodeAt(x, y, r, dmg, ground) {
     blasts.push({ x, y, t: 0, r });
+    sfx('boom');
     burst(x, y, '#ffb060', 14);
     for (const e of enemies) {
       const dx = e.x - x, dy = (ground ? e.y : e.y - e.t.cy) - y;
@@ -1727,6 +1854,7 @@
           for (let i = 0; i < S.mis.n; i++) {
             missiles.push({ x: ox, y: oy, a: -Math.PI / 2 + (Math.random() - 0.5) * 2.6, sp: 120, t: 0, life: 3.2, tr: 0, tg: list[i % list.length] });
           }
+          sfx('missile');
           wt.mis = S.mis.cd;
         } else wt.mis = 0.25;
       }
@@ -1774,6 +1902,7 @@
           for (let i = 0; i < S.las.n; i++) {
             lasers.push({ tg: list[i % list.length], a: 0, t: 0, dur: S.las.dur, tick: 0, w: S.las.w, len: 720 });
           }
+          sfx('laser');
           wt.las = S.las.cd;
         } else wt.las = 0.3;
       }
@@ -1838,6 +1967,7 @@
       const e = enemies[i];
       if (e.hp <= 0) {
         kills++;
+        sfx(e.boss ? 'boom' : 'kill');
         burst(e.x, e.y - e.t.cy, e.t.color, e.boss ? 60 : 12);
         if (e.boss) {
           for (let k = 0; k < 14; k++) {
@@ -1863,7 +1993,7 @@
       if (Math.hypot(player.x - c.x, player.y - c.y) < 30) {
         chests.splice(i, 1);
         burst(c.x, c.y - 14, '#ffd24a', 30);
-        pendingAwaken++;
+        pendingAwaken++; sfx('chest');
       }
     }
     if ((pending > 0 || pendingAwaken > 0) && state === 'playing') nextScreen();
@@ -1879,7 +2009,7 @@
         g.s = Math.min(g.s + 1000 * dt, 640);
         g.x += dx / d * g.s * dt; g.y += dy / d * g.s * dt;
       }
-      if (d < 18) { addXp(g.v); gems.splice(i, 1); }
+      if (d < 18) { addXp(g.v); gems.splice(i, 1); sfx('gem'); }
     }
     while (gems.length > 300) { const g = gems.shift(); addXp(g.v); }
   }
@@ -1922,6 +2052,7 @@
   }
   function gameOver() {
     state = 'dead'; deadT = 0; stick.active = false;
+    AUD.music(false); sfx('dead');
     burst(player.x, player.y - 30, '#ffb347', 40);
     burst(player.x, player.y - 30, '#ff4f7a', 30);
     try {
@@ -1932,7 +2063,7 @@
   }
   function hurt(e, dx, dy) {
     const dmg = Math.max(1, Math.round(e.t.dmg * (1 + (wave - 1) * 0.12)));
-    hp -= dmg;
+    hp -= dmg; sfx('hurt');
     invuln = 0.7; shake = 9; hitFlash = 0.35;
     const d = Math.hypot(dx, dy) || 1;
     player.x += dx / d * 16; player.y += dy / d * 16;
@@ -1963,7 +2094,7 @@
         popups.push({ x: player.x, y: player.y - 62, text: '全経験値を回収！', life: 1.2, color: '#ffd84a' });
         burst(m.x, m.y - 10, '#ffd84a', 24);
         rings.push({ t: 0 });
-        magnets.splice(i, 1);
+        magnets.splice(i, 1); sfx('magnet');
       }
     }
   }
@@ -1977,12 +2108,13 @@
         hp += heal;
         popups.push({ x: player.x, y: player.y - 62, text: '+' + Math.round(heal), life: 0.7, color: '#6fffd0' });
         burst(h.x, h.y - 10, '#6fffd0', 10);
-        hearts.splice(i, 1);
+        hearts.splice(i, 1); sfx('heart');
       }
     }
   }
   function resetGame() {
     state = 'playing';
+    AUD.music(true); AUD.tempo(132);
     time = Number(params.get('t')) || 0;
     player.x = 0; player.y = 0; player.face = 1; player.walk = 0; player.moving = false;
     cam.x = 0; cam.y = 0;
