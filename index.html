@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '46-vibrate2';
+  const BUILD = '47-bolt20';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -2046,7 +2046,7 @@
     hp = Math.min(hp, S.maxHp);
     const bl = up.bolt - 1;
     S.atk = (1 + 0.2 * up.atk) * (1 + 0.05 * ml('atk')) * (1 + 0.1 * META.hero); S.area = 1 + 0.1 * up.area;
-    S.damage = Math.round(10 * S.atk * (1 + 0.25 * up.dmg) * (1 + 0.35 * bl) * (aw.bolt ? 1.5 : 1));
+    S.damage = Math.round(10 * S.atk * (1 + 0.25 * up.dmg) * (1 + 0.2 * bl) * (aw.bolt ? 1.5 : 1));
     S.cooldown = 0.7 * Math.pow(0.85, up.rate) * (aw.rate ? 0.55 : 1) * (1 - 0.03 * ml('rate'));
     S.wall = up.wall; S.rico = up.rico;
     S.speed = 460 * (1 + 0.12 * bl);
@@ -2071,7 +2071,7 @@
 
   const UPGRADES = [
     { id: 'vit',    icon: '命', name: '生命の灯',   desc: '最大HP +20・少し回復・自然回復が強化', max: 5, color: '#ff6a9a', aname: '不死の誓い', adesc: '倒れても一度だけ全回復で蘇り、周囲を吹き飛ばす' },
-    { id: 'bolt',   icon: '魔', name: '魔弾',       desc: '魔弾の威力 +35%・弾速 +12%', max: 6, color: '#ffb347', aname: '天穹の裁き', adesc: '魔弾が貫通・爆発・追尾し、威力も跳ね上がる' },
+    { id: 'bolt',   icon: '魔', name: '魔弾',       desc: '魔弾の威力 +20%・弾速 +12%', max: 6, color: '#ffb347', aname: '天穹の裁き', adesc: '魔弾が貫通・爆発・追尾し、威力も跳ね上がる' },
     { id: 'dmg',    icon: '攻', name: '魔力増幅',   desc: '弾の威力 +25%',          max: 6, color: '#ff8a3d', aname: '業火の魔弾',   adesc: '命中すると爆発し、周囲の敵にもダメージ' },
     { id: 'rate',   icon: '速', name: '高速詠唱',   desc: '発射間隔 -15%',          max: 5, color: '#ffd23f', aname: '無詠唱',       adesc: '発射間隔がさらに大幅に短くなる' },
     { id: 'count',  icon: '数', name: '多重詠唱',   desc: '同時に撃つ弾 +1',        max: 3, color: '#ff6a8a', aname: '星屑の嵐',     adesc: '3回に1回、全方位へ弾を放つ' },
@@ -2082,8 +2082,8 @@
     { id: 'missile', icon: '誘', name: 'ミサイル', ndesc: '新スキル: 追尾ミサイルを撃ち、爆発で範囲攻撃', desc: 'ミサイルの威力・本数・連射が強化', max: 5, color: '#ff6a4a', aname: 'ミサイルの嵐', adesc: '大量のミサイルを撃ち、爆発範囲も拡大' },
     { id: 'laser',  icon: '光', name: 'レーザー', ndesc: '新スキル: 背後からレーザーが敵を狙う。育てるほど本数と連鎖が増える', desc: 'レーザーの威力・本数・連鎖数が強化', max: 5, color: '#6af0ff', aname: 'オーバーレーザー', adesc: 'レーザーがさらに3本増えて太くなり、連鎖も爆発的に増える' },
     { id: 'bomb',   icon: '爆', name: '爆弾', ndesc: '新スキル: 足元に爆弾を置き、範囲爆発', desc: '爆弾の威力・範囲・個数が強化', max: 5, color: '#ffb040', aname: '連鎖爆弾', adesc: '爆発が小さな爆弾を生み、連鎖して爆発する' },
-    { id: 'wall', plain: true, icon: '壁', name: '壁反射', desc: '魔弾が画面の端で跳ね返る (+1回)', max: 3, color: '#9ad0ff' },
-    { id: 'rico', plain: true, icon: '跳', name: '敵間反射', desc: '魔弾が命中後、別の敵へ跳ね返る (+1回)', max: 3, color: '#ffa0d0' },
+    { id: 'wall', plain: true, icon: '壁', name: '壁反射', desc: '魔弾が画面の端で跳ね返る (+1回・反射後は威力50%)', max: 3, color: '#9ad0ff' },
+    { id: 'rico', plain: true, icon: '跳', name: '敵間反射', desc: '魔弾が命中後、別の敵へ跳ね返る (+1回・反射後は威力50%)', max: 3, color: '#ffa0d0' },
     // plain stat boosts (no awakening)
     { id: 'atk',    plain: true, icon: '力', name: '基本攻撃力', desc: '全攻撃のダメージ +20%', max: 8, color: '#ff7a5a' },
     { id: 'area',   plain: true, icon: '範', name: '攻撃範囲',   desc: '弾の大きさ・爆発・レーザー幅 +10%', max: 8, color: '#5ad0ff' },
@@ -2340,7 +2340,7 @@
     sfx('shot');
     bolts.push({
       x: ox, y: oy, vx: Math.cos(a) * S.speed, vy: Math.sin(a) * S.speed,
-      life: S.range / S.speed * 1.25 + 0.7 * (S.wall + S.rico), pierce: S.pierce, hit: new Set(), wall: S.wall, rico: S.rico,
+      life: S.range / S.speed * 1.25 + 0.7 * (S.wall + S.rico), pierce: S.pierce, hit: new Set(), wall: S.wall, rico: S.rico, dm: 1,
     });
   }
   function updateWeapon(dt) {
@@ -2387,7 +2387,7 @@
         else if (sx > W - m) { b.x = camL + W - m; b.vx = -Math.abs(b.vx); bounced = true; }
         if (sy < m) { b.y = camT + m; b.vy = Math.abs(b.vy); bounced = true; }
         else if (sy > H - m) { b.y = camT + H - m; b.vy = -Math.abs(b.vy); bounced = true; }
-        if (bounced) { b.wall--; b.hit.clear(); burst(b.x, b.y, '#9ad0ff', 4); }
+        if (bounced) { b.wall--; b.dm = 0.5; b.hit.clear(); burst(b.x, b.y, '#9ad0ff', 4); }
       }
       for (const e of enemies) {
         if (b.hit.has(e)) continue;
@@ -2395,13 +2395,13 @@
         const dx = e.x - b.x, dy = e.y - e.t.cy - b.y;
         if (dx * dx + dy * dy < rr * rr) {
           b.hit.add(e);
-          dmgSrc = 'bolt'; hitEnemy(e, S.damage, b.vx, b.vy);
+          dmgSrc = 'bolt'; hitEnemy(e, Math.max(1, Math.round(S.damage * b.dm)), b.vx, b.vy);
           if (aw.dmg || aw.bolt) { // explosion
             blasts.push({ x: b.x, y: b.y, t: 0, r: 70 });
             for (const o of enemies) {
               if (o === e) continue;
               const ex = o.x - b.x, ey = o.y - o.t.cy - b.y;
-              if (ex * ex + ey * ey < (70 + o.t.hitR) ** 2) hitEnemy(o, Math.round(S.damage * 0.6), ex, ey, true);
+              if (ex * ex + ey * ey < (70 + o.t.hitR) ** 2) hitEnemy(o, Math.round(S.damage * b.dm * 0.6), ex, ey, true);
             }
           }
           if (b.rico > 0) { // ricochet to another enemy
@@ -2412,7 +2412,7 @@
               if (d2 < nd) { nd = d2; nx = o; }
             }
             if (nx) {
-              b.rico--;
+              b.rico--; b.dm = 0.5;
               const na = Math.atan2(nx.y - nx.t.cy - b.y, nx.x - b.x);
               b.vx = Math.cos(na) * S.speed; b.vy = Math.sin(na) * S.speed;
               burst(b.x, b.y, '#ffa0d0', 4);
