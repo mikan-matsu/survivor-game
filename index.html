@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '47-bolt20';
+  const BUILD = '48-pause';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -1826,6 +1826,7 @@
     const k = e.key.toLowerCase();
     if (MOVE_KEYS.includes(k)) { keys.add(k); e.preventDefault(); }
     if (state === 'levelup' && ['1', '2', '3'].includes(k)) chooseUpgrade(Number(k) - 1);
+    if (k === 'p' || k === 'escape') { if (state === 'playing') setPause(true); else if (state === 'paused') setPause(false); }
     if (state === 'dead' && deadT > 0.9 && ['r', 'enter', ' '].includes(k)) { resetGame(); e.preventDefault(); }
     if (state === 'dead' && deadT > 0.9 && k === 's') { state = 'shop'; sfx('pick'); }
     else if (state === 'shop' && ['r', 'enter', ' '].includes(k)) { resetGame(); e.preventDefault(); }
@@ -1963,6 +1964,7 @@
 
   canvas.addEventListener('pointerdown', e => {
     if (state === 'levelup') { tapCards(e.clientX, e.clientY); return; }
+    if (state === 'paused') { tapPause(e.clientX, e.clientY); return; }
     if (state === 'shop') { tapShop(e.clientX, e.clientY); return; }
     if (state === 'dead') { if (deadT > 0.9) tapEnd(e.clientX, e.clientY); return; }
     if (e.pointerType === 'mouse' || stick.active) return;
@@ -2808,6 +2810,7 @@
 
   function update(dt) {
     clock += dt;
+    if (state === 'paused') return;
     if (state === 'dead' || state === 'shop') { deadT += dt; updateFx(dt); return; }
     if (state === 'levelup') {
       levelupDelay = Math.max(0, levelupDelay - dt);
@@ -3637,6 +3640,34 @@
 
   let btnRetry = null, btnShop = null, btnBack = null, btnGo = null, btnPrev = null, btnNext = null, tabRects = [], btnHero = null, shopRects = [], evoFlash = 0;
   const inR = (r, x, y) => r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+  // ---- pause ----
+  let btnResume = null, btnRetire = null, pauseBtnEl = null;
+  function setPause(on) {
+    if (on && state === 'playing') { state = 'paused'; stick.active = false; AUD.music(false); }
+    else if (!on && state === 'paused') { state = 'playing'; AUD.music(true); }
+    if (pauseBtnEl) pauseBtnEl.textContent = state === 'paused' ? '▶' : '⏸';
+  }
+  function tapPause(x, y) {
+    if (inR(btnResume, x, y)) setPause(false);
+    else if (inR(btnRetire, x, y)) { setPause(false); hp = 0; gameOver(); }
+  }
+  function drawPause() {
+    ctx.fillStyle = 'rgba(8,12,24,0.7)'; ctx.fillRect(0, 0, W, H);
+    const pw = Math.min(W - 60, 280), px = (W - pw) / 2, cy = Math.max(H * 0.3, 190);
+    ctx.textAlign = 'center'; spaced(8); ctx.font = `900 32px ${FONT}`; ctx.fillStyle = '#8ff5e2';
+    ctx.save(); ctx.shadowColor = '#3adcc0'; ctx.shadowBlur = 18; ctx.fillText('PAUSE', W / 2 + 4, cy); ctx.restore(); spaced(0);
+    ctx.font = `12px ${FONT}`; ctx.fillStyle = '#9fb8d0';
+    ctx.fillText(`STAGE ${curStage + 1}　${ST.name}　WAVE ${wave}/${clearWave()}`, W / 2, cy + 28);
+    for (const [y, label, col, key] of [[cy + 56, '再開', '#8ff5e2', 'btnResume'], [cy + 124, 'リタイア', '#ff8aa8', 'btnRetire']]) {
+      chamfer(ctx, px, y, pw, 52, 12);
+      ctx.fillStyle = 'rgba(10,28,34,0.95)'; ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+      ctx.font = `bold 18px ${FONT}`; ctx.fillStyle = col; ctx.fillText(label, W / 2, y + 33);
+      const r = { x: px, y, w: pw, h: 52 };
+      if (key === 'btnResume') btnResume = r; else btnRetire = r;
+    }
+    if (W > 560) { ctx.font = `11px ${FONT}`; ctx.fillStyle = '#6f8ba4'; ctx.fillText('[P] / [Esc] 再開', W / 2, cy + 200); }
+    ctx.textAlign = 'left';
+  }
   function tapEnd(x, y) {
     const tb = tabRects.find(r => inR(r, x, y));
     if (tb) { endTab = tb.i; sfx('pick'); return; }
@@ -3842,8 +3873,19 @@
     if (state === 'levelup') drawLevelUp();
     if (state === 'dead') drawGameOver();
     if (state === 'shop') drawShop();
+    if (state === 'paused') drawPause();
   }
 
+  { // pause button next to the mute button
+    const pb = pauseBtnEl = document.createElement('button');
+    pb.textContent = '⏸';
+    pb.style.cssText = 'position:fixed;right:64px;bottom:calc(10px + env(safe-area-inset-bottom,0px));width:44px;height:44px;border-radius:22px;border:2px solid rgba(255,255,255,.7);background:rgba(20,30,20,.45);color:#fff;font-size:18px;line-height:1;padding:0;z-index:5;touch-action:manipulation;cursor:pointer';
+    pb.addEventListener('pointerdown', e => e.stopPropagation());
+    pb.addEventListener('click', () => { AUD.init(); setPause(state === 'playing'); pb.blur(); });
+    document.body.appendChild(pb);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) setPause(true); });
+    window.addEventListener('blur', () => setPause(true));
+  }
   buildStage(META.stage);
   startWave(Number(params.get('w')) || 1);
 
@@ -3853,6 +3895,7 @@
     spawnNear: n => { for (let i = 0; i < n; i++) spawnEnemy(true); },
     setUp: (id, n) => { up[id] = n; recalc(); },
     addDmg: o => { Object.assign(dmgBy, o); },
+    pause: on => setPause(on),
     endTest: win => { kills = 120; wave = win ? 15 : 7; time = 300; if (win) clearGame(); else { hp = 0; gameOver(); } },
     gold: n => { META.gold = n; },
     setStage: n => { META.stage = n; META.unlocked = Math.max(META.unlocked, n); resetGame(); },
