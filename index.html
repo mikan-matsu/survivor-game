@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '38-pct25';
+  const BUILD = '39-chestarrow';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -2678,7 +2678,32 @@
     ctx.drawImage(e.c, dx, y - e.base, e.w, e.h);
   }
 
+  // arrows at the screen edge pointing to off-screen treasure chests
+  function drawChestArrows() {
+    if (!chests.length || state === 'dead') return;
+    const x0 = 52, x1 = W - 52, y0 = safeTop + 120, y1 = H - 80;
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    for (const c of chests) {
+      const sx = c.x - camL, sy = c.y - camT - 14;
+      if (sx > 10 && sx < W - 10 && sy > 10 && sy < H - 10) continue;
+      const dx = sx - cx, dy = sy - cy;
+      const k = Math.min((x1 - cx) / Math.max(1e-3, Math.abs(dx)), (y1 - cy) / Math.max(1e-3, Math.abs(dy)));
+      const ax = cx + dx * k, ay = cy + dy * k, ang = Math.atan2(dy, dx);
+      const pulse = 1 + 0.12 * Math.sin(clock * 6);
+      ctx.save();
+      ctx.translate(ax, ay);
+      ctx.fillStyle = 'rgba(20,14,30,0.55)'; ctx.beginPath(); ctx.arc(0, 0, 21 * pulse, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.drawImage(chestSpr, -11, -10, 22, 20);
+      ctx.rotate(ang);
+      ctx.translate(25 * pulse, 0);
+      ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-5, -9); ctx.lineTo(-5, 9); ctx.closePath();
+      ctx.fillStyle = '#ffd24a'; ctx.fill(); ctx.strokeStyle = 'rgba(40,20,0,0.85)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.restore();
+    }
+  }
   function drawHud() {
+    drawChestArrows();
     const top = safeTop + 12;
     const bx = 14, bw = W - 28;
     // experience: a slim bar with a hexagon level badge
