@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '41-shop';
+  const BUILD = '42-stages';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -216,22 +216,22 @@
     for (const a of xs) for (const b of ys) out.push([a, b]);
     return out;
   }
-  function makeTile(seed) {
+  function makeTile(seed, th) {
     return mk(TILE, TILE, g => {
       const R = rng(seed);
-      g.fillStyle = '#5bab52';
+      g.fillStyle = th.base;
       g.fillRect(0, 0, TILE, TILE);
       for (let i = 0; i < 10; i++) {
         const x = R() * TILE, y = R() * TILE, r = 24 + R() * 34;
-        const lightBlob = R() < 0.5, c = lightBlob ? '160,225,110' : '30,100,60', a = 0.03;
+        const lightBlob = R() < 0.5, c = lightBlob ? th.blobL : th.blobD, a = 0.03;
         for (const [ox, oy] of wraps(x, y, r)) {
           g.fillStyle = rg(g, x + ox, y + oy, 0, x + ox, y + oy, r, [[0, `rgba(${c},${a})`], [1, `rgba(${c},0)`]]);
           g.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
         }
       }
-      const blades = ['#3f9248', '#78cc66', '#2f7d3e', '#92dc7a', '#4aa856'];
+      const blades = th.blades;
       g.lineCap = 'round';
-      for (let i = 0; i < 140; i++) {
+      for (let i = 0; i < th.bladeN; i++) {
         const x = R() * TILE, y = R() * TILE, h = 3 + R() * 6, lean = (R() - 0.5) * 4;
         g.strokeStyle = blades[Math.floor(R() * blades.length)]; g.lineWidth = 1 + R() * 0.6;
         for (const [ox, oy] of wraps(x, y, 8)) {
@@ -241,7 +241,7 @@
       }
       // tiny wildflowers (white and pink only, so nothing reads as an experience gem)
       const petals = ['#ffffff', '#ffd3e4', '#fff3f8'];
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < (th.flowers ? 6 : 0); i++) {
         const x = R() * TILE, y = R() * TILE, c = petals[Math.floor(R() * petals.length)];
         for (const [ox, oy] of wraps(x, y, 5)) {
           for (let k = 0; k < 4; k++) { const a = k * TAU / 4; g.fillStyle = c; g.beginPath(); g.arc(x + ox + Math.cos(a) * 1.6, y + oy + Math.sin(a) * 1.6, 1.3, 0, TAU); g.fill(); }
@@ -249,8 +249,8 @@
         }
       }
       // dry leaves and pebbles
-      const leaf = ['rgba(214,150,60,0.8)', 'rgba(190,100,50,0.75)', 'rgba(230,190,90,0.75)'];
-      for (let i = 0; i < 7; i++) {
+      const leaf = th.leaf || ['#000'];
+      for (let i = 0; i < (th.leaf ? 7 : 0); i++) {
         const x = R() * TILE, y = R() * TILE, a = R() * TAU, s = 2.5 + R() * 2.5;
         g.fillStyle = leaf[Math.floor(R() * leaf.length)];
         for (const [ox, oy] of wraps(x, y, 6)) {
@@ -262,14 +262,13 @@
       for (let i = 0; i < 5; i++) {
         const x = R() * TILE, y = R() * TILE;
         for (const [ox, oy] of wraps(x, y, 5)) {
-          g.fillStyle = 'rgba(225,228,214,0.8)';
+          g.fillStyle = th.peb;
           g.beginPath(); g.ellipse(x + ox, y + oy, 1.8 + R(), 1.2, 0, 0, TAU); g.fill();
         }
       }
     });
   }
-  const tiles = [];
-  for (let i = 0; i < 6; i++) tiles.push(makeTile(2000 + i * 91));
+  let tiles = [];
 
   // =====================================================================
   // Decor: dead trees, pines, graves, ruins, glowing fungi, lanterns...
@@ -399,6 +398,11 @@
     if (x * x + y * y < 150 * 150) return null; // keep the start clear
     const r = hash(cx, cy, 100), h3 = hash(cx, cy, 103);
     let k;
+    if (ST.dw) {
+      let rr = r * ST.dwTotal; k = ST.dw[0][0];
+      for (const [kk, w] of ST.dw) { if (rr < w) { k = kk; break; } rr -= w; }
+      return { k, x, y };
+    }
     if (r < 0.20) k = Math.floor(h3 * 3);              // dead trees
     else if (r < 0.31) k = 3;                          // pine
     else if (r < 0.40) k = 4 + Math.floor(h3 * 2);     // bush
@@ -491,6 +495,7 @@
   });
   const petals = Array.from({ length: 12 }, () => ({ x: Math.random(), y: Math.random(), vx: 8 + Math.random() * 12, vy: 10 + Math.random() * 14, ph: Math.random() * TAU, c: Math.random() < 0.5 ? '255,255,255' : '255,196,220' }));
   function drawAmbient() {
+    if (ST.tint) { ctx.fillStyle = ST.tint; ctx.fillRect(0, 0, W, H); }
     ctx.globalAlpha = 0.12;
     const ox = (((-camL * 0.92 + clock * 14) % 512) + 512) % 512, oy = (((-camT * 0.92 + clock * 5) % 512) + 512) % 512;
     for (let x = ox - 512; x < W; x += 512) for (let y = oy - 512; y < H; y += 512) ctx.drawImage(cloudTex, x, y, 512, 512);
@@ -507,7 +512,7 @@
       const x = ((p.x * (W + 60) + clock * p.vx - camL * 0.5 + Math.sin(clock + p.ph) * 14) % (W + 60) + (W + 60)) % (W + 60) - 30;
       const y = ((p.y * (H + 60) + clock * p.vy - camT * 0.5) % (H + 60) + (H + 60)) % (H + 60) - 30;
       ctx.save(); ctx.translate(x, y); ctx.rotate(clock * 1.5 + p.ph);
-      ctx.fillStyle = `rgba(${p.c},0.7)`;
+      ctx.fillStyle = `rgba(${ST.petal || p.c},0.7)`;
       ctx.beginPath(); ctx.ellipse(0, 0, 3.4, 1.8, 0, 0, TAU); ctx.fill();
       ctx.restore();
     }
@@ -535,9 +540,56 @@
   // =====================================================================
   // Player: "Ash", a hooded lantern-mage. 4 walk frames.
   // =====================================================================
+  // ---- permanent upgrades bought with gold between runs ----
+  const SHOP = [
+    { id: 'hp',   name: '最大HP',   desc: '+10 / Lv',  max: 10, base: 80,  color: '#ff6a9a' },
+    { id: 'atk',  name: '攻撃力',   desc: '+5% / Lv',  max: 10, base: 100, color: '#ff8a3d' },
+    { id: 'rate', name: '発射間隔', desc: '-3% / Lv',  max: 8,  base: 110, color: '#ffd23f' },
+    { id: 'spd',  name: '移動速度', desc: '+3% / Lv',  max: 8,  base: 80,  color: '#6ad8ff' },
+    { id: 'xp',   name: '経験値',   desc: '+5% / Lv',  max: 10, base: 90,  color: '#7dff8a' },
+    { id: 'mag',  name: '吸引範囲', desc: '+8% / Lv',  max: 8,  base: 70,  color: '#b58aef' },
+  ];
+  const META = { gold: 0, lv: {}, hero: 0, stage: 0, unlocked: 0 };
+  try { const m = JSON.parse(localStorage.getItem('sg_meta') || 'null'); if (m) { META.gold = m.gold | 0; META.lv = m.lv || {}; META.hero = m.hero | 0; META.stage = m.stage | 0; META.unlocked = m.unlocked | 0; } } catch (e) { /* ignore */ }
+  const ml = id => META.lv[id] || 0;
+  const shopCost = it => Math.round(it.base * Math.pow(1.25, ml(it.id)));
+  function saveMeta() { try { localStorage.setItem('sg_meta', JSON.stringify(META)); } catch (e) { /* ignore */ } }
+  const HERO_COST = [300, 800, 1800, 4000];
+  const HERO_NAMES = ['見習い魔法使い', '魔術師', '大魔導師', '賢者', '星の大賢者'];
+  const HERO_PAL = [
+    { cape: [[0, '#d9611f'], [1, '#8a3410']], robe: [[0, '#ffbe5c'], [0.5, '#f08a2a'], [1, '#b84a14']], hat: [[0, '#ffc04a'], [0.5, '#f6a21e'], [1, '#c9780d']], belt: '#6a3412', orb: [[0, '#fffbe0'], [1, '#ff9a1f']], orbS: '#8a4a0a' },
+    { cape: [[0, '#3a6ad8'], [1, '#1a2f78']], robe: [[0, '#8fd8ff'], [0.5, '#3f9ae8'], [1, '#1f4fa8']], hat: [[0, '#7ac8ff'], [0.5, '#3f8ae0'], [1, '#1f4fa8']], belt: '#14306a', orb: [[0, '#f0fdff'], [1, '#3ad0ff']], orbS: '#0a4a8a' },
+    { cape: [[0, '#9a4ad8'], [1, '#4a1a7a']], robe: [[0, '#e0b0ff'], [0.5, '#a05ae0'], [1, '#5a2a9a']], hat: [[0, '#c890ff'], [0.5, '#8a48d0'], [1, '#4a2088']], belt: '#3a1a60', orb: [[0, '#fff0ff'], [1, '#ff5adc']], orbS: '#7a1a6a' },
+    { cape: [[0, '#fff3c8'], [1, '#d8a838']], robe: [[0, '#ffffff'], [0.5, '#f6ecd0'], [1, '#d8b868']], hat: [[0, '#fff6d8'], [0.5, '#f2d680'], [1, '#c89a30']], belt: '#b08428', orb: [[0, '#ffffff'], [1, '#ffd24a']], orbS: '#a07010' },
+    { cape: [[0, '#2a3a8a'], [1, '#0a1030']], robe: [[0, '#5a6ac8'], [0.5, '#2a3a98'], [1, '#10184a']], hat: [[0, '#5a6ac8'], [0.5, '#2a3a98'], [1, '#10184a']], belt: '#ffd24a', orb: [[0, '#ffffff'], [1, '#8ad8ff']], orbS: '#2a5a9a' },
+  ];
+  // ---- stages ----
+  const STAGES = [
+    { name: 'はじまりの草原', boss: 'ムーンイーター', clear: 10, hpMul: 1, wOff: 0, tint: null, petal: null, dec: null, decal: null, dw: null,
+      tile: { base: '#5bab52', blobL: '160,225,110', blobD: '30,100,60', blades: ['#3f9248', '#78cc66', '#2f7d3e', '#92dc7a', '#4aa856'], bladeN: 140, flowers: true, leaf: ['rgba(214,150,60,0.8)', 'rgba(190,100,50,0.75)', 'rgba(230,190,90,0.75)'], peb: 'rgba(225,228,214,0.8)' } },
+    { name: '黄昏の砂漠', boss: 'サンドロード', clear: 10, hpMul: 1.25, wOff: 3, bossTint: '#ffc040', tint: 'rgba(255,170,60,0.09)', petal: '255,226,160', dec: ['#e0a850', 0.5], decal: null,
+      dw: [[6, 3], [7, 3], [10, 2], [14, 2], [3, 1], [4, 2], [5, 2], [13, 1], [15, 3], [0, 1]],
+      tile: { base: '#d9b872', blobL: '255,225,150', blobD: '170,120,60', blades: ['#c49a52', '#ecd194', '#b88a44', '#d8b068', '#a87c3a'], bladeN: 60, flowers: false, leaf: null, peb: 'rgba(150,110,70,0.85)' } },
+    { name: '凍てつく雪原', boss: 'フロストキング', clear: 10, hpMul: 1.6, wOff: 5, bossTint: '#60c0ff', tint: 'rgba(110,170,255,0.09)', petal: '255,255,255', dec: ['#bfe4ff', 0.5], decal: ['#bfe4ff', 0.45],
+      dw: [[3, 6], [6, 2], [7, 2], [4, 1], [5, 1], [14, 1], [13, 1], [15, 2], [0, 1], [1, 1]],
+      tile: { base: '#e4eef6', blobL: '255,255,255', blobD: '140,175,215', blades: ['#c4d8e8', '#ffffff', '#a8c4da', '#d8e8f4'], bladeN: 60, flowers: false, leaf: null, peb: 'rgba(150,175,205,0.8)' } },
+    { name: '灼熱の火山', boss: 'マグマデーモン', clear: 10, hpMul: 2, wOff: 7, bossTint: '#ff5020', tint: 'rgba(255,70,20,0.11)', petal: '255,140,50', dec: ['#ff6a3a', 0.45], decal: ['#ff4a1a', 0.7],
+      dw: [[6, 4], [7, 4], [10, 3], [14, 2], [0, 2], [15, 1], [13, 1], [11, 1], [12, 1]],
+      tile: { base: '#4a2a30', blobL: '255,120,50', blobD: '20,8,12', blades: ['#6a3a3a', '#8a4a30', '#2a1216', '#a05a30'], bladeN: 70, flowers: false, leaf: ['rgba(255,110,40,0.8)', 'rgba(255,170,60,0.75)'], peb: 'rgba(30,20,24,0.9)' } },
+    { name: '虚空の城', boss: 'ヴォイドエンペラー', clear: 15, hpMul: 2.6, wOff: 9, bossTint: '#9a50ff', tint: 'rgba(120,60,255,0.12)', petal: '170,140,255', dec: ['#8a5aff', 0.5], decal: ['#8a5aff', 0.55],
+      dw: [[10, 4], [11, 3], [12, 3], [13, 2], [6, 2], [7, 2], [0, 1], [1, 1], [3, 1], [15, 1]],
+      tile: { base: '#2c2450', blobL: '150,110,255', blobD: '10,6,30', blades: ['#4a3a82', '#6a58b0', '#201a40', '#8a78d0'], bladeN: 70, flowers: false, leaf: ['rgba(170,130,255,0.8)', 'rgba(110,200,255,0.7)'], peb: 'rgba(90,80,150,0.9)' } },
+  ];
+  for (const st of STAGES) if (st.dw) st.dwTotal = st.dw.reduce((a, b) => a + b[1], 0);
+  META.stage = Math.min(META.stage, STAGES.length - 1); META.unlocked = Math.min(Math.max(META.unlocked, META.stage), STAGES.length - 1);
+  let curStage = META.stage, ST = STAGES[curStage];
+  const clearWave = () => ST.clear;
+
   const PW = 64, PH = 84, PAX = 32, PAY = 74;
   // Hero: "Bolt", a small combat robot. No hair, no human face: just a visor, two eyes and clean shapes.
-  function drawWizard(g, step) {
+  function drawWizard(g, step, tier) {
+    tier = tier || 0;
+    const T = HERO_PAL[tier];
     const legL = [0, 3, 0, -3][step], bob = [0, -1, 0, -1][step];
     const line = '#3a1a0a';
     g.save();
@@ -545,7 +597,7 @@
     // cape (behind)
     g.beginPath();
     g.moveTo(25, 38); g.quadraticCurveTo(10, 50, 13, 68); g.lineTo(30, 66); g.lineTo(30, 38); g.closePath();
-    g.fillStyle = lg(g, 12, 40, 28, 68, [[0, '#d9611f'], [1, '#8a3410']]);
+    g.fillStyle = lg(g, 12, 40, 28, 68, T.cape);
     g.fill(); g.strokeStyle = line; g.lineWidth = 1.4; g.stroke();
     // boots
     g.save(); g.translate(0, -bob);
@@ -560,13 +612,14 @@
     g.beginPath();
     g.moveTo(24, 38); g.lineTo(40, 38); g.quadraticCurveTo(46, 52, 46, 62); g.quadraticCurveTo(32, 67, 18, 62); g.quadraticCurveTo(18, 52, 24, 38);
     g.closePath();
-    g.fillStyle = lg(g, 20, 38, 44, 64, [[0, '#ffbe5c'], [0.5, '#f08a2a'], [1, '#b84a14']]);
+    g.fillStyle = lg(g, 20, 38, 44, 64, T.robe);
     g.fill(); g.strokeStyle = line; g.lineWidth = 1.5; g.stroke();
     // robe highlight
     g.strokeStyle = 'rgba(255,240,200,0.5)'; g.lineWidth = 1.5;
     g.beginPath(); g.moveTo(25, 42); g.quadraticCurveTo(21, 52, 22, 60); g.stroke();
     // belt
-    g.fillStyle = '#6a3412'; g.fillRect(20, 50, 24, 4);
+    g.fillStyle = T.belt; g.fillRect(20, 50, 24, 4);
+    if (tier >= 2) { g.strokeStyle = '#ffd24a'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(19.5, 62); g.quadraticCurveTo(32, 66.5, 44.5, 62); g.stroke(); }
     g.strokeStyle = line; g.lineWidth = 1; g.strokeRect(20, 50, 24, 4);
     rrect(g, 29, 49, 6, 6, 1.5); g.fillStyle = '#ffd24a'; g.fill(); g.strokeStyle = '#8a5a0a'; g.stroke();
     // staff (in front hand)
@@ -574,10 +627,11 @@
     g.beginPath(); g.moveTo(47, 30); g.lineTo(47, 68); g.stroke();
     g.strokeStyle = '#9a6a3a'; g.lineWidth = 1.2;
     g.beginPath(); g.moveTo(46.2, 32); g.lineTo(46.2, 66); g.stroke();
-    ell(g, 47, 28, 4.2, 4.2, rg(g, 46, 27, 0.5, 47, 28, 5, [[0, '#fffbe0'], [1, '#ff9a1f']]), '#8a4a0a', 1);
+    ell(g, 47, 28, 4.2, 4.2, rg(g, 46, 27, 0.5, 47, 28, 5, T.orb), T.orbS, 1);
+    if (tier >= 2) for (const [sx2, sy2] of [[52, 22], [42, 21], [53, 33]]) { g.fillStyle = '#fff6c0'; g.fillRect(sx2 - 0.8, sy2 - 0.8, 1.6, 1.6); }
     // arm / hand
     g.beginPath(); g.moveTo(39, 41); g.quadraticCurveTo(46, 44, 47, 49); g.lineWidth = 5.5; g.strokeStyle = line; g.stroke();
-    g.lineWidth = 3.6; g.strokeStyle = '#f08a2a'; g.stroke();
+    g.lineWidth = 3.6; g.strokeStyle = T.robe[1][1]; g.stroke();
     ell(g, 47, 49, 3, 3, '#ffd9b0', line, 1);
     // head
     ell(g, 32, 34, 10, 9.5, rg(g, 28, 30, 1, 32, 34, 12, [[0, '#fff0d8'], [1, '#f2b88a']]), line, 1.4);
@@ -597,14 +651,23 @@
     g.beginPath();
     g.moveTo(20, 29); g.quadraticCurveTo(26, 8, 44, 4); g.quadraticCurveTo(48, 6, 46, 10);
     g.quadraticCurveTo(40, 14, 44, 29); g.closePath();
-    g.fillStyle = lg(g, 20, 6, 46, 30, [[0, '#ffc04a'], [0.5, '#f6a21e'], [1, '#c9780d']]);
+    g.fillStyle = lg(g, 20, 6, 46, 30, T.hat);
     g.fill(); g.strokeStyle = line; g.lineWidth = 1.5; g.stroke();
     g.strokeStyle = 'rgba(255,245,200,0.55)'; g.lineWidth = 1.4;
     g.beginPath(); g.moveTo(25, 24); g.quadraticCurveTo(29, 14, 38, 9); g.stroke();
     // brim
-    ell(g, 32, 29, 17, 4.6, lg(g, 15, 0, 49, 0, [[0, '#ffb23a'], [1, '#c9780d']]), line, 1.5);
-    g.fillStyle = '#7a3b14'; g.fillRect(21, 24.5, 22, 3.5);
+    ell(g, 32, 29, 17, 4.6, lg(g, 15, 0, 49, 0, [T.hat[0], T.hat[2]]), line, 1.5);
+    g.fillStyle = T.belt; g.fillRect(21, 24.5, 22, 3.5);
     rrect(g, 29, 23.8, 7, 5, 1.2); g.fillStyle = '#ffd24a'; g.fill(); g.strokeStyle = '#8a5a0a'; g.lineWidth = 0.9; g.stroke();
+    if (tier >= 1) { // star on the hat
+      g.save(); g.translate(33, 17); g.beginPath();
+      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 1.9 : 4.2; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+      g.closePath(); g.fillStyle = '#fff2a0'; g.fill(); g.strokeStyle = '#a07010'; g.lineWidth = 0.8; g.stroke(); g.restore();
+    }
+    if (tier >= 3) { // golden halo
+      g.save(); g.shadowColor = '#ffd24a'; g.shadowBlur = 6;
+      g.strokeStyle = '#ffd84a'; g.lineWidth = 2; g.beginPath(); g.ellipse(36, 2, 12, 3.2, -0.08, 0, TAU); g.stroke(); g.restore();
+    }
     // leaf
     g.save(); g.translate(47, 8); g.rotate(-0.7);
     ell(g, 0, 0, 7, 3.2, lg(g, -7, 0, 7, 0, [[0, '#8fe06a'], [1, '#3f9a3a']]), '#1f5a1f', 1);
@@ -612,7 +675,9 @@
     g.restore();
     g.restore();
   }
-  const playerFrames = [0, 1, 2, 3].map(i => finish(mk(PW, PH, g => drawWizard(g, i))));
+  const heroCache = [];
+  const getHeroFrames = t => heroCache[t] || (heroCache[t] = [0, 1, 2, 3].map(i => finish(mk(PW, PH, g => drawWizard(g, i, t)))));
+  let playerFrames = getHeroFrames(META.hero);
 
   // =====================================================================
   // Enemies (2 animation frames each; 64x64 box, feet at (32,56))
@@ -1196,7 +1261,13 @@
   const TOUCH = { ooze: 6, bat: 5, spider: 7, bonewalker: 8, ghost: 8, wisp: 6, hound: 9, ghoul: 12, sporeling: 8, knight: 14, reaper: 12, golem: 22, treant: 24, bee: 5, crab: 9, snake: 8, pumpkin: 10, mummy: 12, imp: 9, mimic: 14, vampire: 13, ogre: 24, dragon: 16 };
   for (const t of ENEMY_TYPES) t.dmg = TOUCH[t.name] || 8;
   BOSS_TYPE.dmg = 22;
-  for (const t of ENEMY_TYPES.concat([BOSS_TYPE])) {
+  function tintCanvas(src, color, a) {
+    const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+    const g = c.getContext('2d'); g.drawImage(src, 0, 0);
+    g.globalCompositeOperation = 'source-atop'; g.globalAlpha = a; g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
+    return c;
+  }
+  function buildSprites(t) {
     const fit = { knight: 0.88, reaper: 0.93, hound: 0.94, moon: 0.88 }[t.boss ? 'moon' : t.name] || 1;
     t.spr = [0, 1].map(f => mk(t.w, t.h, g => {
       g.save(); g.translate(t.ax, t.ay); g.scale(fit, fit); g.translate(-t.ax, -t.ay);
@@ -1204,9 +1275,22 @@
       g.restore();
     }));
     if (!t.noStyle) t.spr = t.spr.map(finish);
+    if (t.tint) t.spr = t.spr.map(c => tintCanvas(c, t.tint, 0.4));
     t.flash = t.spr.map(c => silhouette(c));
     const mirror = src => { const c = document.createElement('canvas'); c.width = src.width; c.height = src.height; const g = c.getContext('2d'); g.translate(c.width, 0); g.scale(-1, 1); g.drawImage(src, 0, 0); return c; };
     t.sprF = t.spr.map(mirror); t.flashF = t.flash.map(mirror);
+  }
+  for (const t of ENEMY_TYPES.concat([BOSS_TYPE])) buildSprites(t);
+  // swap ground, scenery tint and boss look for the current stage
+  let decS = DEC.map(k => k.s), decalS = DECALS.map(k => k.s);
+  function buildStage(i) {
+    curStage = i; ST = STAGES[i];
+    tiles = []; for (let n = 0; n < 6; n++) tiles.push(makeTile(2000 + n * 91, ST.tile));
+    devTiles = null;
+    decS = DEC.map(k => ST.dec ? tintCanvas(k.s, ST.dec[0], ST.dec[1]) : k.s);
+    decalS = DECALS.map(k => ST.decal ? tintCanvas(k.s, ST.decal[0], ST.decal[1]) : k.s);
+    BOSS_TYPE.name = ST.boss; BOSS_TYPE.tint = ST.bossTint || null;
+    buildSprites(BOSS_TYPE);
   }
 
   // =====================================================================
@@ -1431,27 +1515,12 @@
   const hearts = [], magnets = [];
   const up = { vit: 0, bolt: 1, dmg: 0, rate: 0, count: 0, pierce: 0, move: 0, magnet: 0, range: 0, missile: 0, laser: 0, bomb: 0, atk: 0, area: 0, xp: 0, wall: 0, rico: 0 };
   const aw = { vit: false, bolt: false, dmg: false, rate: false, count: false, pierce: false, move: false, magnet: false, range: false, missile: false, laser: false, bomb: false, atk: false, area: false, xp: false, wall: false, rico: false };
-  // ---- permanent upgrades bought with gold between runs ----
-  const CLEAR_WAVE = 15;
-  const SHOP = [
-    { id: 'hp',   name: '最大HP',   desc: '+10 / Lv',  max: 10, base: 80,  color: '#ff6a9a' },
-    { id: 'atk',  name: '攻撃力',   desc: '+5% / Lv',  max: 10, base: 100, color: '#ff8a3d' },
-    { id: 'rate', name: '発射間隔', desc: '-3% / Lv',  max: 8,  base: 110, color: '#ffd23f' },
-    { id: 'spd',  name: '移動速度', desc: '+3% / Lv',  max: 8,  base: 80,  color: '#6ad8ff' },
-    { id: 'xp',   name: '経験値',   desc: '+5% / Lv',  max: 10, base: 90,  color: '#7dff8a' },
-    { id: 'mag',  name: '吸引範囲', desc: '+8% / Lv',  max: 8,  base: 70,  color: '#b58aef' },
-  ];
-  const META = { gold: 0, lv: {} };
-  try { const m = JSON.parse(localStorage.getItem('sg_meta') || 'null'); if (m) { META.gold = m.gold | 0; META.lv = m.lv || {}; } } catch (e) { /* ignore */ }
-  const ml = id => META.lv[id] || 0;
-  const shopCost = it => Math.round(it.base * Math.pow(1.25, ml(it.id)));
-  function saveMeta() { try { localStorage.setItem('sg_meta', JSON.stringify(META)); } catch (e) { /* ignore */ } }
   const S = {};
   function recalc() {
-    S.maxHp = 100 + 20 * up.vit + 10 * ml('hp');
+    S.maxHp = 100 + 20 * up.vit + 10 * ml('hp') + 20 * META.hero;
     hp = Math.min(hp, S.maxHp);
     const bl = up.bolt - 1;
-    S.atk = (1 + 0.2 * up.atk) * (1 + 0.05 * ml('atk')); S.area = 1 + 0.1 * up.area;
+    S.atk = (1 + 0.2 * up.atk) * (1 + 0.05 * ml('atk')) * (1 + 0.1 * META.hero); S.area = 1 + 0.1 * up.area;
     S.damage = Math.round(10 * S.atk * (1 + 0.25 * up.dmg) * (1 + 0.35 * bl) * (aw.bolt ? 1.5 : 1));
     S.cooldown = 0.7 * Math.pow(0.85, up.rate) * (aw.rate ? 0.55 : 1) * (1 - 0.03 * ml('rate'));
     S.wall = up.wall; S.rico = up.rico;
@@ -1461,7 +1530,7 @@
     S.range = 230 * (1 + 0.2 * up.range) * (aw.range ? 1.6 : 1);
     S.magnet = aw.magnet ? 1e6 : 70 * (1 + 0.4 * up.magnet) * (1 + 0.08 * ml('mag'));
     S.xpMul = (aw.magnet ? 1.5 : 1) * (1 + 0.15 * up.xp) * (1 + 0.05 * ml('xp'));
-    player.speed = 220 * (1 + 0.1 * up.move) * (aw.move ? 1.25 : 1) * (1 + 0.03 * ml('spd'));
+    player.speed = 220 * (1 + 0.1 * up.move) * (aw.move ? 1.25 : 1) * (1 + 0.03 * ml('spd')) * (1 + 0.03 * META.hero);
     // sub-weapons scale with the damage / cast-speed upgrades too
     const dm = (1 + 0.2 * up.dmg) * S.atk, cm = Math.pow(0.93, up.rate), cnt = [0, 1, 1, 2, 2, 3];
     const lv = k => Math.max(0, up[k] - 1);
@@ -1561,15 +1630,16 @@
   }
 
   // ---- enemies ----
-  const hpScale = () => 1 + 0.26 * (wave - 1) + 0.005 * (wave - 1) ** 2;
+  const hpScale = () => (1 + 0.26 * (wave - 1) + 0.005 * (wave - 1) ** 2) * ST.hpMul;
   const speedScale = () => Math.min(1.4, 1 + 0.02 * (wave - 1));
   function pickType() {
-    const wgt = t => t.weight * (wave - t.minW <= 1 ? 1.8 : 1); // favour the newest types
+    const ew = wave + ST.wOff;
+    const wgt = t => t.weight * (ew - t.minW <= 1 ? 1.8 : 1); // favour the newest types
     let total = 0;
-    for (const t of ENEMY_TYPES) if (wave >= t.minW) total += wgt(t);
+    for (const t of ENEMY_TYPES) if (ew >= t.minW) total += wgt(t);
     let r = Math.random() * total;
     for (const t of ENEMY_TYPES) {
-      if (wave < t.minW) continue;
+      if (ew < t.minW) continue;
       r -= wgt(t);
       if (r <= 0) return t;
     }
@@ -1600,7 +1670,7 @@
     waveBannerT = 1.2; waveBannerText = 'WAVE ' + n;
     sfx(boss ? 'boss' : 'wave');
     AUD.tempo(boss ? 150 : 132);
-    waveBannerSub = boss ? 'ボスウェーブ' : `敵 ${waveTotal}体`;
+    waveBannerSub = (n === 1 ? `STAGE ${curStage + 1}　${ST.name}　` : '') + (boss ? 'ボスウェーブ' : `敵 ${waveTotal}体`);
     for (let i = 0, k = Math.min(6, Math.floor(waveTotal / 3)); i < k; i++) { if (spawnEnemy(false)) waveSpawned++; }
     if (boss) spawnBoss();
   }
@@ -1626,7 +1696,7 @@
   }
   function spawnBoss() {
     const ang = Math.random() * TAU, dist = Math.hypot(W, H) / 2 + 120;
-    const hp = Math.round(BOSS_TYPE.hp * (1 + 0.9 * bossCount) * (1 + 0.04 * (wave - 5)));
+    const hp = Math.round(BOSS_TYPE.hp * (1 + 0.9 * bossCount) * (1 + 0.04 * (wave - 5)) * ST.hpMul);
     bossCount++;
     bannerT = 3;
     enemies.push({
@@ -2029,7 +2099,7 @@
           chests.push({ x: e.x, y: e.y, ph: Math.random() * TAU });
           hearts.push({ x: e.x - 30, y: e.y + 10, ph: 0 }, { x: e.x + 30, y: e.y + 10, ph: 1 });
           magnets.push({ x: e.x, y: e.y + 24, ph: 2 });
-          if (wave >= CLEAR_WAVE) winPending = true;
+          if (wave >= clearWave()) winPending = true;
         } else {
           gems.push({ x: e.x, y: e.y - 2, v: e.t.xp, ph: Math.random() * TAU, s: 0, mag: false });
           if (Math.random() < 0.03) hearts.push({ x: e.x, y: e.y - 2, ph: Math.random() * TAU });
@@ -2107,8 +2177,10 @@
   let cleared = false, runGold = 0, winPending = false;
   function endRun(win) {
     cleared = win;
-    runGold = Math.floor(kills * 0.6 + wave * 12 + time / 8) + (win ? 300 : 0);
-    META.gold += runGold; saveMeta();
+    runGold = Math.round((Math.floor(kills * 0.6 + wave * 12 + time / 8) + (win ? 300 : 0)) * (1 + 0.5 * curStage));
+    META.gold += runGold;
+    if (win && curStage < STAGES.length - 1) { META.unlocked = Math.max(META.unlocked, curStage + 1); META.stage = curStage + 1; }
+    saveMeta();
   }
   function clearGame() {
     state = 'dead'; deadT = 0; stick.active = false;
@@ -2132,7 +2204,7 @@
     } catch (e) { /* storage unavailable */ }
   }
   function hurt(e, dx, dy) {
-    const dmg = Math.max(1, Math.round(e.t.dmg * (1 + (wave - 1) * 0.12)));
+    const dmg = Math.max(1, Math.round(e.t.dmg * (1 + (wave - 1) * 0.12) * (1 + 0.15 * curStage)));
     hp -= dmg; sfx('hurt');
     invuln = 0.7; shake = 9; hitFlash = 0.35;
     const d = Math.hypot(dx, dy) || 1;
@@ -2197,6 +2269,8 @@
     for (const k in aw) aw[k] = false;
     choices = []; mode = 'level'; levelupDelay = 0;
     invuln = 0; hitFlash = 0; shake = 0; deadT = 0; revived = false; cleared = false; winPending = false;
+    if (META.stage !== curStage) buildStage(META.stage);
+    playerFrames = getHeroFrames(META.hero);
     recalc();
     hp = S.maxHp;
     stick.active = false;
@@ -2274,7 +2348,7 @@
         const d = decalAt(cx, cy);
         if (!d) continue;
         const k = DECALS[d.k];
-        ctx.drawImage(k.s, d.x - camL - k.w / 2, d.y - camT - k.h / 2, k.w, k.h);
+        ctx.drawImage(decalS[d.k], d.x - camL - k.w / 2, d.y - camT - k.h / 2, k.w, k.h);
       }
     }
     // decor
@@ -2353,7 +2427,7 @@
     for (const it of items) {
       if (it.t === 0) {
         const { d, k } = it;
-        ctx.drawImage(k.s, d.x - camL - k.ax, d.y - camT - k.ay, k.w, k.h);
+        ctx.drawImage(decS[d.k], d.x - camL - k.ax, d.y - camT - k.ay, k.w, k.h);
       } else if (it.t === 1) {
         drawEnemy(it.e);
       } else if (it.t === 3) {
@@ -2436,6 +2510,14 @@
       ctx.fillRect(ex - 26, ey - 26, 52, 52);
       ctx.restore();
       hexPath(ctx, ex, ey, 5.5); ctx.strokeStyle = 'rgba(200,255,255,0.9)'; ctx.lineWidth = 1.4; ctx.stroke();
+    }
+    if (META.hero >= 4) { // starry aura of the final form
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const ar = 44 + 3 * Math.sin(clock * 4);
+      ctx.fillStyle = rg(ctx, px, py - 30, 4, px, py - 30, ar, [[0, 'rgba(255,225,130,0.35)'], [1, 'rgba(255,225,130,0)']]);
+      ctx.fillRect(px - ar, py - 30 - ar, ar * 2, ar * 2);
+      for (let i = 0; i < 4; i++) { const a = clock * 1.6 + i * TAU / 4; ctx.fillStyle = 'rgba(255,240,170,0.9)'; ctx.fillRect(px + Math.cos(a) * 26 - 1.2, py - 30 + Math.sin(a) * 18 - 1.2, 2.4, 2.4); }
+      ctx.restore();
     }
     ctx.save();
     ctx.translate(px, py + breathe);
@@ -2816,7 +2898,7 @@
       const prog = wavePhase === 'clear' ? 1 : Math.max(0, Math.min(1, 1 - left / total));
       const rx = W - bx;
       spaced(2);
-      tag('WAVE ' + wave + '/' + CLEAR_WAVE, rx, cyc - 2, 'right', 14, '#9ff5e4');
+      tag('WAVE ' + wave + '/' + clearWave(), rx, cyc - 2, 'right', 14, '#9ff5e4');
       spaced(0);
       tag(wavePhase === 'clear' ? 'CLEAR' : '残り ' + left, rx, cyc + 14, 'right', 11, wavePhase === 'clear' ? '#6fffd0' : '#9fb8d0');
       const wbw = 110;
@@ -3024,15 +3106,24 @@
     ctx.textAlign = 'left';
   }
 
-  let btnRetry = null, btnShop = null, btnBack = null, btnGo = null, shopRects = [];
+  let btnRetry = null, btnShop = null, btnBack = null, btnGo = null, btnPrev = null, btnNext = null, btnHero = null, shopRects = [], evoFlash = 0;
   const inR = (r, x, y) => r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
   function tapEnd(x, y) {
-    if (inR(btnShop, x, y)) { state = 'shop'; sfx('pick'); }
+    if (inR(btnPrev, x, y)) { if (META.stage > 0) { META.stage--; saveMeta(); sfx('pick'); } }
+    else if (inR(btnNext, x, y)) { if (META.stage < META.unlocked) { META.stage++; saveMeta(); sfx('pick'); } }
+    else if (inR(btnShop, x, y)) { state = 'shop'; sfx('pick'); }
     else if (inR(btnRetry, x, y)) resetGame();
   }
   function tapShop(x, y) {
     if (inR(btnGo, x, y)) { resetGame(); return; }
     if (inR(btnBack, x, y)) { state = 'dead'; return; }
+    if (inR(btnHero, x, y)) {
+      if (META.hero < HERO_COST.length && META.gold >= HERO_COST[META.hero]) {
+        META.gold -= HERO_COST[META.hero]; META.hero++; saveMeta();
+        playerFrames = getHeroFrames(META.hero); recalc(); hp = S.maxHp; evoFlash = 1; sfx('awaken');
+      }
+      return;
+    }
     for (const r of shopRects) {
       if (!inR(r, x, y)) continue;
       const it = SHOP[r.i], lv = ml(it.id), cost = shopCost(it);
@@ -3042,14 +3133,34 @@
     }
   }
   function drawShop() {
-    ctx.fillStyle = 'rgba(10,14,28,0.94)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(10,14,28,0.95)'; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'center';
-    spaced(6); ctx.font = `900 28px ${FONT}`; ctx.fillStyle = '#ffd24a';
-    ctx.fillText('SHOP', W / 2 + 3, safeTop + 46); spaced(0);
-    ctx.font = `800 20px ${FONT}`; ctx.fillStyle = '#fff3c0';
-    ctx.fillText('所持 ' + META.gold + ' G', W / 2, safeTop + 78);
+    spaced(6); ctx.font = `900 26px ${FONT}`; ctx.fillStyle = '#ffd24a';
+    ctx.fillText('SHOP', W / 2 + 3, safeTop + 40); spaced(0);
+    ctx.font = `800 18px ${FONT}`; ctx.fillStyle = '#fff3c0';
+    ctx.fillText('所持 ' + META.gold + ' G', W / 2, safeTop + 66);
     const pw = Math.min(W - 28, 380), px = (W - pw) / 2;
-    const rh = Math.max(46, Math.min(66, (H - safeTop - 250) / SHOP.length - 8)), y0 = safeTop + 98;
+    // hero evolution card
+    const hy = safeTop + 80, hh = 86, ht = META.hero, last = ht >= HERO_COST.length, hcost = last ? 0 : HERO_COST[ht], hcan = !last && META.gold >= hcost;
+    chamfer(ctx, px, hy, pw, hh, 12);
+    ctx.fillStyle = 'rgba(30,26,52,0.97)'; ctx.fill();
+    ctx.strokeStyle = hcan ? '#ffd24a' : 'rgba(255,214,90,0.4)'; ctx.lineWidth = hcan ? 2.4 : 1.4; ctx.stroke();
+    evoFlash = Math.max(0, evoFlash - 0.02);
+    if (evoFlash > 0) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,230,140,${evoFlash * 0.5})`; ctx.fillRect(px, hy, pw, hh); ctx.restore(); }
+    ctx.drawImage(getHeroFrames(ht)[1], px + 6, hy + 2, PW, PH);
+    ctx.textAlign = 'left';
+    ctx.font = `bold 11px ${FONT}`; ctx.fillStyle = '#ffd24a'; ctx.fillText(`主人公 Lv ${ht + 1} / ${HERO_COST.length + 1}`, px + 78, hy + 20);
+    ctx.font = `bold 16px ${FONT}`; ctx.fillStyle = '#f2f8ff'; ctx.fillText(HERO_NAMES[ht], px + 78, hy + 42);
+    ctx.font = `10.5px ${FONT}`; ctx.fillStyle = '#9fb8d0'; ctx.fillText(`HP +${20 * ht} / 攻撃 +${10 * ht}% / 移動 +${3 * ht}%`, px + 78, hy + 60);
+    if (!last) { ctx.fillStyle = '#8f9fb8'; ctx.fillText(`進化 → ${HERO_NAMES[ht + 1]}`, px + 78, hy + 76); }
+    ctx.textAlign = 'right';
+    ctx.font = `800 16px ${FONT}`; ctx.fillStyle = last ? '#8ff5e2' : hcan ? '#ffe27a' : '#6f7f94';
+    ctx.fillText(last ? 'MAX' : hcost + ' G', px + pw - 14, hy + 34);
+    if (!last) { ctx.font = `bold 11px ${FONT}`; ctx.fillStyle = hcan ? '#ffd24a' : '#6f7f94'; ctx.fillText(hcan ? 'タップで進化!' : 'ゴールド不足', px + pw - 14, hy + 54); }
+    btnHero = { x: px, y: hy, w: pw, h: hh };
+    // upgrade rows
+    const y0 = hy + hh + 10;
+    const rh = Math.max(40, Math.min(54, (H - y0 - 84) / SHOP.length - 8));
     shopRects = [];
     SHOP.forEach((it, i) => {
       const y = y0 + i * (rh + 8), lv = ml(it.id), maxed = lv >= it.max, cost = shopCost(it), can = !maxed && META.gold >= cost;
@@ -3057,19 +3168,19 @@
       ctx.fillStyle = can ? 'rgba(26,34,58,0.97)' : 'rgba(16,22,38,0.95)'; ctx.fill();
       ctx.strokeStyle = can ? it.color : 'rgba(120,140,170,0.35)'; ctx.lineWidth = can ? 2 : 1.2; ctx.stroke();
       ctx.textAlign = 'left';
-      ctx.font = `bold 16px ${FONT}`; ctx.fillStyle = '#f2f8ff'; ctx.fillText(it.name, px + 16, y + 24);
-      ctx.font = `11px ${FONT}`; ctx.fillStyle = '#9fb8d0'; ctx.fillText(it.desc, px + 16 + ctx.measureText(it.name).width * 0 + 86, y + 24);
-      for (let k = 0; k < it.max; k++) { ctx.fillStyle = k < lv ? it.color : 'rgba(255,255,255,0.14)'; ctx.fillRect(px + 16 + k * 14, y + rh - 20, 10, 8); }
+      ctx.font = `bold 15px ${FONT}`; ctx.fillStyle = '#f2f8ff'; ctx.fillText(it.name, px + 14, y + 22);
+      ctx.font = `11px ${FONT}`; ctx.fillStyle = '#9fb8d0'; ctx.fillText(it.desc, px + 100, y + 22);
+      for (let k = 0; k < it.max; k++) { ctx.fillStyle = k < lv ? it.color : 'rgba(255,255,255,0.14)'; ctx.fillRect(px + 14 + k * 13, y + rh - 16, 9, 7); }
       ctx.textAlign = 'right';
-      ctx.font = `800 17px ${FONT}`; ctx.fillStyle = maxed ? '#8ff5e2' : can ? '#ffe27a' : '#6f7f94';
-      ctx.fillText(maxed ? 'MAX' : cost + ' G', px + pw - 16, y + rh / 2 + 6);
+      ctx.font = `800 16px ${FONT}`; ctx.fillStyle = maxed ? '#8ff5e2' : can ? '#ffe27a' : '#6f7f94';
+      ctx.fillText(maxed ? 'MAX' : cost + ' G', px + pw - 14, y + rh / 2 + 6);
       shopRects.push({ x: px, y, w: pw, h: rh, i });
     });
-    const by = Math.min(H - 76, y0 + SHOP.length * (rh + 8) + 8), bw = (pw - 12) / 2, bh = 50;
+    const by = Math.min(H - 76, y0 + SHOP.length * (rh + 8) + 6), bw = (pw - 12) / 2, bh = 48;
     for (const [bx, label, col, key] of [[px, '戻る', '#9fb8d0', 'btnBack'], [px + bw + 12, 'もう一度', '#8ff5e2', 'btnGo']]) {
       chamfer(ctx, bx, by, bw, bh, 12);
       ctx.fillStyle = 'rgba(10,28,34,0.95)'; ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
-      ctx.textAlign = 'center'; ctx.font = `bold 17px ${FONT}`; ctx.fillStyle = col; ctx.fillText(label, bx + bw / 2, by + 32);
+      ctx.textAlign = 'center'; ctx.font = `bold 17px ${FONT}`; ctx.fillStyle = col; ctx.fillText(label, bx + bw / 2, by + 31);
       const r = { x: bx, y: by, w: bw, h: bh };
       if (key === 'btnBack') btnBack = r; else btnGo = r;
     }
@@ -3090,19 +3201,19 @@
     ctx.font = `900 36px ${FONT}`;
     ctx.fillStyle = cleared ? '#ffe27a' : '#ff5a8a';
     ctx.save(); ctx.shadowColor = cleared ? '#ffb020' : '#ff2a6a'; ctx.shadowBlur = 20;
-    ctx.fillText(cleared ? 'CLEAR!' : 'GAME OVER', W / 2 + 4, cy);
+    ctx.fillText(cleared ? (curStage >= STAGES.length - 1 ? 'ALL CLEAR!' : 'CLEAR!') : 'GAME OVER', W / 2 + 4, cy);
     ctx.restore();
     spaced(1);
     ctx.font = `13px ${FONT}`; ctx.fillStyle = '#b894a8';
-    ctx.fillText(cleared ? '月喰らいを討ち果たした！' : '月に喰われてしまった', W / 2, cy + 28);
+    ctx.fillText(cleared ? (curStage >= STAGES.length - 1 ? '全ステージ制覇！' : ST.boss + 'を討ち果たした！') : ST.boss + 'に敗れた…', W / 2, cy + 28);
     spaced(0);
 
     let best = { time: 0, kills: 0 };
     try { best = JSON.parse(localStorage.getItem('hollownight.best') || 'null') || best; } catch (e) { /* ignore */ }
     const t = Math.floor(time), fmt = n => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0');
     const rows = [['到達ウェーブ', 'WAVE ' + wave, 'BEST ' + (best.wave || wave)], ['生存時間', fmt(t), 'BEST ' + fmt(best.time)], ['撃破数', String(kills), 'BEST ' + best.kills], ['到達レベル', 'Lv ' + level, ''], ['獲得ゴールド', '+' + runGold + ' G', '所持 ' + META.gold + ' G']];
-    const pw = Math.min(W - 40, 340), px = (W - pw) / 2, py = cy + 50, rh = 42;
-    chamfer(ctx, px, py, pw, rh * rows.length + 16, 14);
+    const pw = Math.min(W - 40, 340), px = (W - pw) / 2, py = cy + 50, rh = 38;
+    chamfer(ctx, px, py, pw, rh * rows.length + 24, 14);
     ctx.fillStyle = 'rgba(14,20,36,0.92)'; ctx.fill();
     ctx.strokeStyle = cleared ? 'rgba(255,214,90,0.8)' : 'rgba(255,90,140,0.7)'; ctx.lineWidth = 1.4; ctx.stroke();
     rows.forEach((r, i) => {
@@ -3115,7 +3226,14 @@
     });
 
     // retry button
-    const bw = Math.min(W - 60, 240), bh = 52, bx = (W - bw) / 2, by = py + rh * rows.length + 34;
+    const bw = Math.min(W - 60, 240), bh = 52, bx = (W - bw) / 2, selY = py + rh * rows.length + 32, by = selY + 40;
+    // stage selector
+    ctx.textAlign = 'center'; ctx.font = `bold 14px ${FONT}`; ctx.fillStyle = '#d8e8f4';
+    ctx.fillText(`STAGE ${META.stage + 1}　${STAGES[META.stage].name}`, W / 2, selY + 20);
+    ctx.font = `bold 20px ${FONT}`;
+    ctx.fillStyle = META.stage > 0 ? '#ffe27a' : 'rgba(255,255,255,0.18)'; ctx.fillText('◀', bx + 14, selY + 21);
+    ctx.fillStyle = META.stage < META.unlocked ? '#ffe27a' : 'rgba(255,255,255,0.18)'; ctx.fillText('▶', bx + bw - 14, selY + 21);
+    btnPrev = { x: bx - 10, y: selY, w: 56, h: 32 }; btnNext = { x: bx + bw - 46, y: selY, w: 56, h: 32 };
     const ready = deadT > 0.9, pulse = ready ? 0.7 + 0.3 * Math.sin(clock * 5) : 0.3;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     ctx.fillStyle = rg(ctx, W / 2, by + bh / 2, 0, W / 2, by + bh / 2, bw * 0.7, [[0, `rgba(90,230,210,${0.2 * pulse})`], [1, 'rgba(90,230,210,0)']]);
@@ -3169,6 +3287,7 @@
     if (state === 'shop') drawShop();
   }
 
+  buildStage(META.stage);
   startWave(Number(params.get('w')) || 1);
 
   // debug hooks for testing
@@ -3178,6 +3297,9 @@
     setUp: (id, n) => { up[id] = n; recalc(); },
     endTest: win => { kills = 120; wave = win ? 15 : 7; time = 300; if (win) clearGame(); else { hp = 0; gameOver(); } },
     gold: n => { META.gold = n; },
+    setStage: n => { META.stage = n; META.unlocked = Math.max(META.unlocked, n); resetGame(); },
+    heroFrames: t => getHeroFrames(t),
+    setHero: n => { META.hero = n; playerFrames = getHeroFrames(n); recalc(); },
     openShop: () => { state = 'shop'; },
     giveChest: () => { pendingAwaken++; if (state === 'playing') nextScreen(); },
     dropChest: () => chests.push({ x: player.x + 200, y: player.y + 40, ph: 0 }),
