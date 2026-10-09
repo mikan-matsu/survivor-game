@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '37-bounce';
+  const BUILD = '38-pct25';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -1432,7 +1432,7 @@
     S.maxHp = 100 + 20 * up.vit;
     hp = Math.min(hp, S.maxHp);
     const bl = up.bolt - 1;
-    S.atk = 1 + 0.1 * up.atk; S.area = 1 + 0.1 * up.area;
+    S.atk = 1 + 0.25 * up.atk; S.area = 1 + 0.1 * up.area;
     S.damage = Math.round(10 * S.atk * (1 + 0.25 * up.dmg) * (1 + 0.35 * bl) * (aw.bolt ? 1.5 : 1));
     S.cooldown = 0.7 * Math.pow(0.85, up.rate) * (aw.rate ? 0.55 : 1);
     S.wall = up.wall; S.rico = up.rico;
@@ -1441,7 +1441,7 @@
     S.pierce = (aw.pierce ? 999 : up.pierce) + (aw.bolt ? 3 : 0);
     S.range = 230 * (1 + 0.2 * up.range) * (aw.range ? 1.6 : 1);
     S.magnet = aw.magnet ? 1e6 : 70 * (1 + 0.4 * up.magnet);
-    S.xpMul = (aw.magnet ? 1.5 : 1) * (1 + 0.1 * up.xp);
+    S.xpMul = (aw.magnet ? 1.5 : 1) * (1 + 0.25 * up.xp);
     player.speed = 220 * (1 + 0.1 * up.move) * (aw.move ? 1.25 : 1);
     // sub-weapons scale with the damage / cast-speed upgrades too
     const dm = (1 + 0.2 * up.dmg) * S.atk, cm = Math.pow(0.93, up.rate), cnt = [0, 1, 1, 2, 2, 3];
@@ -1471,9 +1471,9 @@
     { id: 'wall', plain: true, icon: '壁', name: '壁反射', desc: '魔弾が画面の端で跳ね返る (+1回)', max: 3, color: '#9ad0ff' },
     { id: 'rico', plain: true, icon: '跳', name: '敵間反射', desc: '魔弾が命中後、別の敵へ跳ね返る (+1回)', max: 3, color: '#ffa0d0' },
     // plain stat boosts (no awakening)
-    { id: 'atk',    plain: true, icon: '力', name: '基本攻撃力', desc: '全攻撃のダメージ +10%', max: 8, color: '#ff7a5a' },
+    { id: 'atk',    plain: true, icon: '力', name: '基本攻撃力', desc: '全攻撃のダメージ +25%', max: 8, color: '#ff7a5a' },
     { id: 'area',   plain: true, icon: '範', name: '攻撃範囲',   desc: '弾の大きさ・爆発・レーザー幅 +10%', max: 8, color: '#5ad0ff' },
-    { id: 'xp',     plain: true, icon: '経', name: '経験値ボーナス', desc: '獲得経験値 +10%', max: 5, color: '#7dff8a' },
+    { id: 'xp',     plain: true, icon: '経', name: '経験値ボーナス', desc: '獲得経験値 +25%', max: 5, color: '#7dff8a' },
   ];
   let choices = [];
   let levelupDelay = 0;
