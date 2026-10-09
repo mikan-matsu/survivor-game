@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '40-pct20';
+  const BUILD = '41-shop';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -1219,6 +1219,9 @@
     if (MOVE_KEYS.includes(k)) { keys.add(k); e.preventDefault(); }
     if (state === 'levelup' && ['1', '2', '3'].includes(k)) chooseUpgrade(Number(k) - 1);
     if (state === 'dead' && deadT > 0.9 && ['r', 'enter', ' '].includes(k)) { resetGame(); e.preventDefault(); }
+    if (state === 'dead' && deadT > 0.9 && k === 's') { state = 'shop'; sfx('pick'); }
+    else if (state === 'shop' && ['r', 'enter', ' '].includes(k)) { resetGame(); e.preventDefault(); }
+    else if (state === 'shop' && ['escape', 'b'].includes(k)) { state = 'dead'; }
   });
   window.addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
   window.addEventListener('blur', () => keys.clear());
@@ -1351,7 +1354,8 @@
 
   canvas.addEventListener('pointerdown', e => {
     if (state === 'levelup') { tapCards(e.clientX, e.clientY); return; }
-    if (state === 'dead') { if (deadT > 0.9) resetGame(); return; }
+    if (state === 'shop') { tapShop(e.clientX, e.clientY); return; }
+    if (state === 'dead') { if (deadT > 0.9) tapEnd(e.clientX, e.clientY); return; }
     if (e.pointerType === 'mouse' || stick.active) return;
     stick.active = true;
     stick.id = e.pointerId;
@@ -1427,22 +1431,37 @@
   const hearts = [], magnets = [];
   const up = { vit: 0, bolt: 1, dmg: 0, rate: 0, count: 0, pierce: 0, move: 0, magnet: 0, range: 0, missile: 0, laser: 0, bomb: 0, atk: 0, area: 0, xp: 0, wall: 0, rico: 0 };
   const aw = { vit: false, bolt: false, dmg: false, rate: false, count: false, pierce: false, move: false, magnet: false, range: false, missile: false, laser: false, bomb: false, atk: false, area: false, xp: false, wall: false, rico: false };
+  // ---- permanent upgrades bought with gold between runs ----
+  const CLEAR_WAVE = 15;
+  const SHOP = [
+    { id: 'hp',   name: '最大HP',   desc: '+10 / Lv',  max: 10, base: 80,  color: '#ff6a9a' },
+    { id: 'atk',  name: '攻撃力',   desc: '+5% / Lv',  max: 10, base: 100, color: '#ff8a3d' },
+    { id: 'rate', name: '発射間隔', desc: '-3% / Lv',  max: 8,  base: 110, color: '#ffd23f' },
+    { id: 'spd',  name: '移動速度', desc: '+3% / Lv',  max: 8,  base: 80,  color: '#6ad8ff' },
+    { id: 'xp',   name: '経験値',   desc: '+5% / Lv',  max: 10, base: 90,  color: '#7dff8a' },
+    { id: 'mag',  name: '吸引範囲', desc: '+8% / Lv',  max: 8,  base: 70,  color: '#b58aef' },
+  ];
+  const META = { gold: 0, lv: {} };
+  try { const m = JSON.parse(localStorage.getItem('sg_meta') || 'null'); if (m) { META.gold = m.gold | 0; META.lv = m.lv || {}; } } catch (e) { /* ignore */ }
+  const ml = id => META.lv[id] || 0;
+  const shopCost = it => Math.round(it.base * Math.pow(1.25, ml(it.id)));
+  function saveMeta() { try { localStorage.setItem('sg_meta', JSON.stringify(META)); } catch (e) { /* ignore */ } }
   const S = {};
   function recalc() {
-    S.maxHp = 100 + 20 * up.vit;
+    S.maxHp = 100 + 20 * up.vit + 10 * ml('hp');
     hp = Math.min(hp, S.maxHp);
     const bl = up.bolt - 1;
-    S.atk = 1 + 0.2 * up.atk; S.area = 1 + 0.1 * up.area;
+    S.atk = (1 + 0.2 * up.atk) * (1 + 0.05 * ml('atk')); S.area = 1 + 0.1 * up.area;
     S.damage = Math.round(10 * S.atk * (1 + 0.25 * up.dmg) * (1 + 0.35 * bl) * (aw.bolt ? 1.5 : 1));
-    S.cooldown = 0.7 * Math.pow(0.85, up.rate) * (aw.rate ? 0.55 : 1);
+    S.cooldown = 0.7 * Math.pow(0.85, up.rate) * (aw.rate ? 0.55 : 1) * (1 - 0.03 * ml('rate'));
     S.wall = up.wall; S.rico = up.rico;
     S.speed = 460 * (1 + 0.12 * bl);
     S.count = 1 + up.count + (aw.bolt ? 2 : 0);
     S.pierce = (aw.pierce ? 999 : up.pierce) + (aw.bolt ? 3 : 0);
     S.range = 230 * (1 + 0.2 * up.range) * (aw.range ? 1.6 : 1);
-    S.magnet = aw.magnet ? 1e6 : 70 * (1 + 0.4 * up.magnet);
-    S.xpMul = (aw.magnet ? 1.5 : 1) * (1 + 0.15 * up.xp);
-    player.speed = 220 * (1 + 0.1 * up.move) * (aw.move ? 1.25 : 1);
+    S.magnet = aw.magnet ? 1e6 : 70 * (1 + 0.4 * up.magnet) * (1 + 0.08 * ml('mag'));
+    S.xpMul = (aw.magnet ? 1.5 : 1) * (1 + 0.15 * up.xp) * (1 + 0.05 * ml('xp'));
+    player.speed = 220 * (1 + 0.1 * up.move) * (aw.move ? 1.25 : 1) * (1 + 0.03 * ml('spd'));
     // sub-weapons scale with the damage / cast-speed upgrades too
     const dm = (1 + 0.2 * up.dmg) * S.atk, cm = Math.pow(0.93, up.rate), cnt = [0, 1, 1, 2, 2, 3];
     const lv = k => Math.max(0, up[k] - 1);
@@ -1454,6 +1473,7 @@
       r: (80 + 8 * up.bomb) * (aw.bomb ? 1.25 : 1) * S.area };
   }
   recalc();
+  hp = S.maxHp;
 
   const UPGRADES = [
     { id: 'vit',    icon: '命', name: '生命の灯',   desc: '最大HP +20・少し回復・自然回復が強化', max: 5, color: '#ff6a9a', aname: '不死の誓い', adesc: '倒れても一度だけ全回復で蘇り、周囲を吹き飛ばす' },
@@ -2009,6 +2029,7 @@
           chests.push({ x: e.x, y: e.y, ph: Math.random() * TAU });
           hearts.push({ x: e.x - 30, y: e.y + 10, ph: 0 }, { x: e.x + 30, y: e.y + 10, ph: 1 });
           magnets.push({ x: e.x, y: e.y + 24, ph: 2 });
+          if (wave >= CLEAR_WAVE) winPending = true;
         } else {
           gems.push({ x: e.x, y: e.y - 2, v: e.t.xp, ph: Math.random() * TAU, s: 0, mag: false });
           if (Math.random() < 0.03) hearts.push({ x: e.x, y: e.y - 2, ph: Math.random() * TAU });
@@ -2017,6 +2038,7 @@
         enemies.splice(i, 1);
       }
     }
+    if (winPending) { winPending = false; clearGame(); }
   }
 
   function updateChests() {
@@ -2082,11 +2104,27 @@
     }
     popups.push({ x: player.x, y: player.y - 70, text: '蘇生！', life: 1.2, color: '#ffe9b0' });
   }
+  let cleared = false, runGold = 0, winPending = false;
+  function endRun(win) {
+    cleared = win;
+    runGold = Math.floor(kills * 0.6 + wave * 12 + time / 8) + (win ? 300 : 0);
+    META.gold += runGold; saveMeta();
+  }
+  function clearGame() {
+    state = 'dead'; deadT = 0; stick.active = false;
+    AUD.music(false); sfx('awaken');
+    endRun(true);
+    saveBest();
+  }
   function gameOver() {
     state = 'dead'; deadT = 0; stick.active = false;
     AUD.music(false); sfx('dead');
     burst(player.x, player.y - 30, '#ffb347', 40);
     burst(player.x, player.y - 30, '#ff4f7a', 30);
+    endRun(false);
+    saveBest();
+  }
+  function saveBest() {
     try {
       const best = JSON.parse(localStorage.getItem('hollownight.best') || 'null') || { time: 0, kills: 0 };
       best.time = Math.max(best.time, Math.floor(time)); best.kills = Math.max(best.kills, kills); best.wave = Math.max(best.wave || 0, wave);
@@ -2158,7 +2196,7 @@
     up.bolt = 1;
     for (const k in aw) aw[k] = false;
     choices = []; mode = 'level'; levelupDelay = 0;
-    invuln = 0; hitFlash = 0; shake = 0; deadT = 0; revived = false;
+    invuln = 0; hitFlash = 0; shake = 0; deadT = 0; revived = false; cleared = false; winPending = false;
     recalc();
     hp = S.maxHp;
     stick.active = false;
@@ -2167,7 +2205,7 @@
 
   function update(dt) {
     clock += dt;
-    if (state === 'dead') { deadT += dt; updateFx(dt); return; }
+    if (state === 'dead' || state === 'shop') { deadT += dt; updateFx(dt); return; }
     if (state === 'levelup') {
       levelupDelay = Math.max(0, levelupDelay - dt);
       updateFx(dt);
@@ -2778,7 +2816,7 @@
       const prog = wavePhase === 'clear' ? 1 : Math.max(0, Math.min(1, 1 - left / total));
       const rx = W - bx;
       spaced(2);
-      tag('WAVE ' + wave, rx, cyc - 2, 'right', 14, '#9ff5e4');
+      tag('WAVE ' + wave + '/' + CLEAR_WAVE, rx, cyc - 2, 'right', 14, '#9ff5e4');
       spaced(0);
       tag(wavePhase === 'clear' ? 'CLEAR' : '残り ' + left, rx, cyc + 14, 'right', 11, wavePhase === 'clear' ? '#6fffd0' : '#9fb8d0');
       const wbw = 110;
@@ -2986,9 +3024,61 @@
     ctx.textAlign = 'left';
   }
 
+  let btnRetry = null, btnShop = null, btnBack = null, btnGo = null, shopRects = [];
+  const inR = (r, x, y) => r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+  function tapEnd(x, y) {
+    if (inR(btnShop, x, y)) { state = 'shop'; sfx('pick'); }
+    else if (inR(btnRetry, x, y)) resetGame();
+  }
+  function tapShop(x, y) {
+    if (inR(btnGo, x, y)) { resetGame(); return; }
+    if (inR(btnBack, x, y)) { state = 'dead'; return; }
+    for (const r of shopRects) {
+      if (!inR(r, x, y)) continue;
+      const it = SHOP[r.i], lv = ml(it.id), cost = shopCost(it);
+      if (lv < it.max && META.gold >= cost) {
+        META.gold -= cost; META.lv[it.id] = lv + 1; saveMeta(); recalc(); sfx('levelup');
+      }
+    }
+  }
+  function drawShop() {
+    ctx.fillStyle = 'rgba(10,14,28,0.94)'; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    spaced(6); ctx.font = `900 28px ${FONT}`; ctx.fillStyle = '#ffd24a';
+    ctx.fillText('SHOP', W / 2 + 3, safeTop + 46); spaced(0);
+    ctx.font = `800 20px ${FONT}`; ctx.fillStyle = '#fff3c0';
+    ctx.fillText('所持 ' + META.gold + ' G', W / 2, safeTop + 78);
+    const pw = Math.min(W - 28, 380), px = (W - pw) / 2;
+    const rh = Math.max(46, Math.min(66, (H - safeTop - 250) / SHOP.length - 8)), y0 = safeTop + 98;
+    shopRects = [];
+    SHOP.forEach((it, i) => {
+      const y = y0 + i * (rh + 8), lv = ml(it.id), maxed = lv >= it.max, cost = shopCost(it), can = !maxed && META.gold >= cost;
+      chamfer(ctx, px, y, pw, rh, 10);
+      ctx.fillStyle = can ? 'rgba(26,34,58,0.97)' : 'rgba(16,22,38,0.95)'; ctx.fill();
+      ctx.strokeStyle = can ? it.color : 'rgba(120,140,170,0.35)'; ctx.lineWidth = can ? 2 : 1.2; ctx.stroke();
+      ctx.textAlign = 'left';
+      ctx.font = `bold 16px ${FONT}`; ctx.fillStyle = '#f2f8ff'; ctx.fillText(it.name, px + 16, y + 24);
+      ctx.font = `11px ${FONT}`; ctx.fillStyle = '#9fb8d0'; ctx.fillText(it.desc, px + 16 + ctx.measureText(it.name).width * 0 + 86, y + 24);
+      for (let k = 0; k < it.max; k++) { ctx.fillStyle = k < lv ? it.color : 'rgba(255,255,255,0.14)'; ctx.fillRect(px + 16 + k * 14, y + rh - 20, 10, 8); }
+      ctx.textAlign = 'right';
+      ctx.font = `800 17px ${FONT}`; ctx.fillStyle = maxed ? '#8ff5e2' : can ? '#ffe27a' : '#6f7f94';
+      ctx.fillText(maxed ? 'MAX' : cost + ' G', px + pw - 16, y + rh / 2 + 6);
+      shopRects.push({ x: px, y, w: pw, h: rh, i });
+    });
+    const by = Math.min(H - 76, y0 + SHOP.length * (rh + 8) + 8), bw = (pw - 12) / 2, bh = 50;
+    for (const [bx, label, col, key] of [[px, '戻る', '#9fb8d0', 'btnBack'], [px + bw + 12, 'もう一度', '#8ff5e2', 'btnGo']]) {
+      chamfer(ctx, bx, by, bw, bh, 12);
+      ctx.fillStyle = 'rgba(10,28,34,0.95)'; ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+      ctx.textAlign = 'center'; ctx.font = `bold 17px ${FONT}`; ctx.fillStyle = col; ctx.fillText(label, bx + bw / 2, by + 32);
+      const r = { x: bx, y: by, w: bw, h: bh };
+      if (key === 'btnBack') btnBack = r; else btnGo = r;
+    }
+    ctx.textAlign = 'left';
+  }
+
   function drawGameOver() {
     const k = Math.min(1, deadT / 0.6);
-    ctx.fillStyle = `rgba(48,14,30,${0.62 * k})`;
+    ctx.fillStyle = cleared ? `rgba(14,40,44,${0.7 * k})` : `rgba(48,14,30,${0.62 * k})`;
     ctx.fillRect(0, 0, W, H);
     const vg = ctx.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, Math.max(W, H) * 0.7);
     vg.addColorStop(0, `rgba(255,60,110,${0.16 * k})`); vg.addColorStop(1, 'rgba(0,0,0,0)');
@@ -2998,23 +3088,23 @@
     ctx.textAlign = 'center';
     spaced(8);
     ctx.font = `900 36px ${FONT}`;
-    ctx.fillStyle = '#ff5a8a';
-    ctx.save(); ctx.shadowColor = '#ff2a6a'; ctx.shadowBlur = 20;
-    ctx.fillText('GAME OVER', W / 2 + 4, cy);
+    ctx.fillStyle = cleared ? '#ffe27a' : '#ff5a8a';
+    ctx.save(); ctx.shadowColor = cleared ? '#ffb020' : '#ff2a6a'; ctx.shadowBlur = 20;
+    ctx.fillText(cleared ? 'CLEAR!' : 'GAME OVER', W / 2 + 4, cy);
     ctx.restore();
     spaced(1);
     ctx.font = `13px ${FONT}`; ctx.fillStyle = '#b894a8';
-    ctx.fillText('月に喰われてしまった', W / 2, cy + 28);
+    ctx.fillText(cleared ? '月喰らいを討ち果たした！' : '月に喰われてしまった', W / 2, cy + 28);
     spaced(0);
 
     let best = { time: 0, kills: 0 };
     try { best = JSON.parse(localStorage.getItem('hollownight.best') || 'null') || best; } catch (e) { /* ignore */ }
     const t = Math.floor(time), fmt = n => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0');
-    const rows = [['到達ウェーブ', 'WAVE ' + wave, 'BEST ' + (best.wave || wave)], ['生存時間', fmt(t), 'BEST ' + fmt(best.time)], ['撃破数', String(kills), 'BEST ' + best.kills], ['到達レベル', 'Lv ' + level, '']];
-    const pw = Math.min(W - 40, 340), px = (W - pw) / 2, py = cy + 54, rh = 46;
+    const rows = [['到達ウェーブ', 'WAVE ' + wave, 'BEST ' + (best.wave || wave)], ['生存時間', fmt(t), 'BEST ' + fmt(best.time)], ['撃破数', String(kills), 'BEST ' + best.kills], ['到達レベル', 'Lv ' + level, ''], ['獲得ゴールド', '+' + runGold + ' G', '所持 ' + META.gold + ' G']];
+    const pw = Math.min(W - 40, 340), px = (W - pw) / 2, py = cy + 50, rh = 42;
     chamfer(ctx, px, py, pw, rh * rows.length + 16, 14);
     ctx.fillStyle = 'rgba(14,20,36,0.92)'; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,90,140,0.7)'; ctx.lineWidth = 1.4; ctx.stroke();
+    ctx.strokeStyle = cleared ? 'rgba(255,214,90,0.8)' : 'rgba(255,90,140,0.7)'; ctx.lineWidth = 1.4; ctx.stroke();
     rows.forEach((r, i) => {
       const y = py + 16 + i * rh + 24;
       ctx.textAlign = 'left'; ctx.font = `13px ${FONT}`; ctx.fillStyle = '#9fb8d0';
@@ -3025,7 +3115,7 @@
     });
 
     // retry button
-    const bw = Math.min(W - 60, 240), bh = 52, bx = (W - bw) / 2, by = py + rh * rows.length + 46;
+    const bw = Math.min(W - 60, 240), bh = 52, bx = (W - bw) / 2, by = py + rh * rows.length + 34;
     const ready = deadT > 0.9, pulse = ready ? 0.7 + 0.3 * Math.sin(clock * 5) : 0.3;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     ctx.fillStyle = rg(ctx, W / 2, by + bh / 2, 0, W / 2, by + bh / 2, bw * 0.7, [[0, `rgba(90,230,210,${0.2 * pulse})`], [1, 'rgba(90,230,210,0)']]);
@@ -3038,7 +3128,16 @@
     ctx.font = `bold 18px ${FONT}`; ctx.fillStyle = ready ? '#8ff5e2' : '#4a6a70';
     ctx.fillText('もう一度', W / 2 + 2, by + 32);
     spaced(0);
-    if (W > 560) { ctx.font = `11px ${FONT}`; ctx.fillStyle = '#6f8ba4'; ctx.fillText('[R] / [Enter]', W / 2, by + bh + 22); }
+    btnRetry = { x: bx, y: by, w: bw, h: bh };
+    // shop button
+    const sy2 = by + bh + 12, sh2 = 46;
+    chamfer(ctx, bx, sy2, bw, sh2, 12);
+    ctx.fillStyle = 'rgba(40,30,8,0.95)'; ctx.fill();
+    ctx.strokeStyle = ready ? '#ffd24a' : 'rgba(255,210,74,0.3)'; ctx.lineWidth = 2; ctx.stroke();
+    spaced(3); ctx.font = `bold 16px ${FONT}`; ctx.fillStyle = ready ? '#ffe27a' : '#6a5a30';
+    ctx.fillText('ショップ (強化)', W / 2 + 1.5, sy2 + 29); spaced(0);
+    btnShop = { x: bx, y: sy2, w: bw, h: sh2 };
+    if (W > 560) { ctx.font = `11px ${FONT}`; ctx.fillStyle = '#6f8ba4'; ctx.fillText('[R] もう一度 / [S] ショップ', W / 2, sy2 + sh2 + 22); }
     ctx.globalAlpha = 1;
     ctx.textAlign = 'left';
   }
@@ -3067,6 +3166,7 @@
     ctx.font = `10px ${FONT}`; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillText('build ' + BUILD, 8, H - 8);
     if (state === 'levelup') drawLevelUp();
     if (state === 'dead') drawGameOver();
+    if (state === 'shop') drawShop();
   }
 
   startWave(Number(params.get('w')) || 1);
@@ -3076,6 +3176,9 @@
     addXp, spawnBoss, choose: chooseUpgrade,
     spawnNear: n => { for (let i = 0; i < n; i++) spawnEnemy(true); },
     setUp: (id, n) => { up[id] = n; recalc(); },
+    endTest: win => { kills = 120; wave = win ? 15 : 7; time = 300; if (win) clearGame(); else { hp = 0; gameOver(); } },
+    gold: n => { META.gold = n; },
+    openShop: () => { state = 'shop'; },
     giveChest: () => { pendingAwaken++; if (state === 'playing') nextScreen(); },
     dropChest: () => chests.push({ x: player.x + 200, y: player.y + 40, ph: 0 }),
     awaken: id => { aw[id] = true; recalc(); },
