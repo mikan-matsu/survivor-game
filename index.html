@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '43-roster';
+  const BUILD = '44-dmgstats';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -2319,8 +2319,11 @@
       particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.3 + Math.random() * 0.35, color });
     }
   }
+  let dmgSrc = 'bolt';
+  const dmgBy = { bolt: 0, missile: 0, laser: 0, bomb: 0, aura: 0, revive: 0 };
   function hitEnemy(e, dmg, vx, vy, quiet) {
     dmg = Math.max(1, dmg - (e.t.armor || 0));
+    dmgBy[dmgSrc] += Math.max(0, Math.min(dmg, e.hp));
     if (!quiet) sfx('hit');
     e.hp -= dmg;
     e.flash = 0.09;
@@ -2391,7 +2394,7 @@
         const dx = e.x - b.x, dy = e.y - e.t.cy - b.y;
         if (dx * dx + dy * dy < rr * rr) {
           b.hit.add(e);
-          hitEnemy(e, S.damage, b.vx, b.vy);
+          dmgSrc = 'bolt'; hitEnemy(e, S.damage, b.vx, b.vy);
           if (aw.dmg || aw.bolt) { // explosion
             blasts.push({ x: b.x, y: b.y, t: 0, r: 70 });
             for (const o of enemies) {
@@ -2426,7 +2429,7 @@
         auraTimer = 0.4;
         for (const e of enemies) {
           const dx = e.x - player.x, dy = e.y - player.y;
-          if (dx * dx + dy * dy < (80 + e.t.r) ** 2) hitEnemy(e, Math.max(6, Math.round(S.damage * 0.5)), 0, 0, true);
+          if (dx * dx + dy * dy < (80 + e.t.r) ** 2) dmgSrc = 'aura', hitEnemy(e, Math.max(6, Math.round(S.damage * 0.5)), 0, 0, true);
         }
       }
     }
@@ -2535,7 +2538,7 @@
         const dx = e.x - m.x, dy = e.y - e.t.cy - m.y, rr = e.t.hitR + 7;
         if (dx * dx + dy * dy < rr * rr) { boom = true; break; }
       }
-      if (boom) { explodeAt(m.x, m.y, S.mis.r, S.mis.dmg, false); missiles.splice(i, 1); }
+      if (boom) { dmgSrc = 'missile'; explodeAt(m.x, m.y, S.mis.r, S.mis.dmg, false); missiles.splice(i, 1); }
     }
 
     if (up.laser > 0) {
@@ -2572,7 +2575,7 @@
         laserGeom(L, claimed);
         if (L.tick <= 0) {
           L.tick = 0.12;
-          for (const [e, m] of L.targets) hitEnemy(e, Math.round(S.las.dmg * m), 0, 0, true);
+          dmgSrc = 'laser'; for (const [e, m] of L.targets) hitEnemy(e, Math.round(S.las.dmg * m), 0, 0, true);
         }
         if (L.t >= L.dur) lasers.splice(i, 1);
       }
@@ -2596,7 +2599,7 @@
       const b = bombs[i];
       b.t += dt;
       if (b.t >= b.fuse) {
-        explodeAt(b.x, b.y - 6, b.r, b.dmg, true);
+        dmgSrc = 'bomb'; explodeAt(b.x, b.y - 6, b.r, b.dmg, true);
         if (aw.bomb && b.chain) {
           for (let k = 0; k < 3; k++) {
             const a = Math.random() * TAU;
@@ -2694,13 +2697,13 @@
     burst(player.x, player.y - 30, '#ffe9b0', 40);
     for (const e of enemies) {
       const dx = e.x - player.x, dy = e.y - player.y;
-      if (dx * dx + dy * dy < 330 * 330) hitEnemy(e, 300, dx, dy);
+      if (dx * dx + dy * dy < 330 * 330) { dmgSrc = 'revive'; hitEnemy(e, 300, dx, dy); }
     }
     popups.push({ x: player.x, y: player.y - 70, text: '蘇生！', life: 1.2, color: '#ffe9b0' });
   }
-  let cleared = false, runGold = 0, winPending = false;
+  let cleared = false, runGold = 0, winPending = false, endTab = 0;
   function endRun(win) {
-    cleared = win;
+    cleared = win; endTab = win ? 1 : 0;
     runGold = Math.round((Math.floor(kills * 0.6 + wave * 12 + time / 8) + (win ? 300 : 0)) * (1 + 0.5 * curStage));
     META.gold += runGold;
     if (win && curStage < STAGES.length - 1) { META.unlocked = Math.max(META.unlocked, curStage + 1); META.stage = curStage + 1; }
@@ -2792,7 +2795,7 @@
     up.bolt = 1;
     for (const k in aw) aw[k] = false;
     choices = []; mode = 'level'; levelupDelay = 0;
-    invuln = 0; hitFlash = 0; shake = 0; deadT = 0; revived = false; cleared = false; winPending = false;
+    invuln = 0; hitFlash = 0; shake = 0; deadT = 0; revived = false; cleared = false; winPending = false; for (const k in dmgBy) dmgBy[k] = 0;
     if (META.stage !== curStage) buildStage(META.stage);
     playerFrames = getHeroFrames(META.hero);
     recalc();
@@ -3630,9 +3633,11 @@
     ctx.textAlign = 'left';
   }
 
-  let btnRetry = null, btnShop = null, btnBack = null, btnGo = null, btnPrev = null, btnNext = null, btnHero = null, shopRects = [], evoFlash = 0;
+  let btnRetry = null, btnShop = null, btnBack = null, btnGo = null, btnPrev = null, btnNext = null, tabRects = [], btnHero = null, shopRects = [], evoFlash = 0;
   const inR = (r, x, y) => r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
   function tapEnd(x, y) {
+    const tb = tabRects.find(r => inR(r, x, y));
+    if (tb) { endTab = tb.i; sfx('pick'); return; }
     if (inR(btnPrev, x, y)) { if (META.stage > 0) { META.stage--; saveMeta(); sfx('pick'); } }
     else if (inR(btnNext, x, y)) { if (META.stage < META.unlocked) { META.stage++; saveMeta(); sfx('pick'); } }
     else if (inR(btnShop, x, y)) { state = 'shop'; sfx('pick'); }
@@ -3736,21 +3741,47 @@
     try { best = JSON.parse(localStorage.getItem('hollownight.best') || 'null') || best; } catch (e) { /* ignore */ }
     const t = Math.floor(time), fmt = n => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0');
     const rows = [['到達ウェーブ', 'WAVE ' + wave, 'BEST ' + (best.wave || wave)], ['生存時間', fmt(t), 'BEST ' + fmt(best.time)], ['撃破数', String(kills), 'BEST ' + best.kills], ['到達レベル', 'Lv ' + level, ''], ['獲得ゴールド', '+' + runGold + ' G', '所持 ' + META.gold + ' G']];
-    const pw = Math.min(W - 40, 340), px = (W - pw) / 2, py = cy + 50, rh = 38;
-    chamfer(ctx, px, py, pw, rh * rows.length + 24, 14);
+    const pw = Math.min(W - 40, 340), px = (W - pw) / 2, py = cy + 50, rh = 38, ph = 30 + rh * 5 + 24;
+    chamfer(ctx, px, py, ph > 0 ? pw : pw, ph, 14);
     ctx.fillStyle = 'rgba(14,20,36,0.92)'; ctx.fill();
     ctx.strokeStyle = cleared ? 'rgba(255,214,90,0.8)' : 'rgba(255,90,140,0.7)'; ctx.lineWidth = 1.4; ctx.stroke();
-    rows.forEach((r, i) => {
-      const y = py + 16 + i * rh + 24;
-      ctx.textAlign = 'left'; ctx.font = `13px ${FONT}`; ctx.fillStyle = '#9fb8d0';
-      ctx.fillText(r[0], px + 20, y);
-      ctx.textAlign = 'right'; ctx.font = `800 22px ${FONT}`; ctx.fillStyle = '#f2f8ff';
-      ctx.fillText(r[1], px + pw - 20, y);
-      if (r[2]) { ctx.font = `10px ${FONT}`; ctx.fillStyle = '#6f8ba4'; ctx.fillText(r[2], px + pw - 20, y + 15); }
+    // tabs
+    const tw = (pw - 24) / 2;
+    tabRects = [{ x: px + 12, y: py + 6, w: tw, h: 24, i: 0 }, { x: px + 12 + tw, y: py + 6, w: tw, h: 24, i: 1 }];
+    ['成績', 'ダメージ内訳'].forEach((label, i) => {
+      const r = tabRects[i], on = endTab === i;
+      ctx.fillStyle = on ? 'rgba(255,214,90,0.2)' : 'rgba(255,255,255,0.04)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.fillStyle = on ? '#ffe27a' : '#6f8ba4'; ctx.fillRect(r.x, r.y + r.h - 2, r.w, 2);
+      ctx.textAlign = 'center'; ctx.font = `bold 12px ${FONT}`; ctx.fillText(label, r.x + r.w / 2, r.y + 16);
     });
+    if (endTab === 0) {
+      rows.forEach((r, i) => {
+        const y = py + 30 + 16 + i * rh + 24;
+        ctx.textAlign = 'left'; ctx.font = `13px ${FONT}`; ctx.fillStyle = '#9fb8d0';
+        ctx.fillText(r[0], px + 20, y);
+        ctx.textAlign = 'right'; ctx.font = `800 22px ${FONT}`; ctx.fillStyle = '#f2f8ff';
+        ctx.fillText(r[1], px + pw - 20, y);
+        if (r[2]) { ctx.font = `10px ${FONT}`; ctx.fillStyle = '#6f8ba4'; ctx.fillText(r[2], px + pw - 20, y + 15); }
+      });
+    } else {
+      const names = { bolt: ['魔弾', '#ffb347'], missile: ['ミサイル', '#ff6a4a'], laser: ['レーザー', '#6af0ff'], bomb: ['爆弾', '#ffb040'], aura: ['疾風の結界', '#6ad8ff'], revive: ['不死の誓い', '#ff6a9a'] };
+      const list = Object.keys(dmgBy).filter(k => dmgBy[k] > 0).sort((a, b) => dmgBy[b] - dmgBy[a]);
+      const total = list.reduce((a, k) => a + dmgBy[k], 0);
+      const y0 = py + 30 + 8;
+      ctx.textAlign = 'left'; ctx.font = `13px ${FONT}`; ctx.fillStyle = '#9fb8d0'; ctx.fillText('総ダメージ', px + 20, y0 + 22);
+      ctx.textAlign = 'right'; ctx.font = `800 22px ${FONT}`; ctx.fillStyle = '#f2f8ff'; ctx.fillText(Math.round(total).toLocaleString(), px + pw - 20, y0 + 22);
+      list.forEach((k, i) => {
+        const y = y0 + 36 + i * 29, pct = total ? dmgBy[k] / total : 0, bw2 = pw - 40;
+        ctx.textAlign = 'left'; ctx.font = `bold 12px ${FONT}`; ctx.fillStyle = names[k][1]; ctx.fillText(names[k][0], px + 20, y + 10);
+        ctx.textAlign = 'right'; ctx.font = `12px ${FONT}`; ctx.fillStyle = '#d8e8f4'; ctx.fillText(`${Math.round(dmgBy[k]).toLocaleString()}  (${Math.round(pct * 100)}%)`, px + pw - 20, y + 10);
+        ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(px + 20, y + 15, bw2, 6);
+        ctx.fillStyle = names[k][1]; ctx.fillRect(px + 20, y + 15, Math.max(2, bw2 * pct), 6);
+      });
+      if (!list.length) { ctx.textAlign = 'center'; ctx.font = `12px ${FONT}`; ctx.fillStyle = '#6f8ba4'; ctx.fillText('ダメージ記録なし', px + pw / 2, y0 + 70); }
+    }
 
     // retry button
-    const bw = Math.min(W - 60, 240), bh = 52, bx = (W - bw) / 2, selY = py + rh * rows.length + 32, by = selY + 40;
+    const bw = Math.min(W - 60, 240), bh = 52, bx = (W - bw) / 2, selY = py + ph + 12, by = selY + 40;
     // stage selector
     ctx.textAlign = 'center'; ctx.font = `bold 14px ${FONT}`; ctx.fillStyle = '#d8e8f4';
     ctx.fillText(`STAGE ${META.stage + 1}　${STAGES[META.stage].name}`, W / 2, selY + 20);
@@ -3819,6 +3850,7 @@
     addXp, spawnBoss, choose: chooseUpgrade,
     spawnNear: n => { for (let i = 0; i < n; i++) spawnEnemy(true); },
     setUp: (id, n) => { up[id] = n; recalc(); },
+    addDmg: o => { Object.assign(dmgBy, o); },
     endTest: win => { kills = 120; wave = win ? 15 : 7; time = 300; if (win) clearGame(); else { hp = 0; gameOver(); } },
     gold: n => { META.gold = n; },
     setStage: n => { META.stage = n; META.unlocked = Math.max(META.unlocked, n); resetGame(); },
