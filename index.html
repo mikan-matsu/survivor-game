@@ -33,7 +33,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '44-dmgstats';
+  const BUILD = '45-vibrate';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -1940,6 +1940,7 @@
     return api;
   })();
   const sfx = AUD.sfx;
+  const buzz = p => { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) { /* unsupported */ } };
   // mute button (works on desktop and phone)
   (() => {
     const b = document.createElement('button');
@@ -2717,7 +2718,7 @@
   }
   function gameOver() {
     state = 'dead'; deadT = 0; stick.active = false;
-    AUD.music(false); sfx('dead');
+    AUD.music(false); sfx('dead'); buzz([90, 50, 160]);
     burst(player.x, player.y - 30, '#ffb347', 40);
     burst(player.x, player.y - 30, '#ff4f7a', 30);
     endRun(false);
@@ -2733,6 +2734,7 @@
   function hurt(e, dx, dy) {
     const dmg = Math.max(1, Math.round(e.t.dmg * (1 + (wave - 1) * 0.12) * (1 + 0.15 * curStage)));
     hp -= dmg; sfx('hurt');
+    buzz(e.boss ? 70 : Math.min(60, 25 + dmg * 1.5));
     invuln = 0.7; shake = 9; hitFlash = 0.35;
     const d = Math.hypot(dx, dy) || 1;
     player.x += dx / d * 16; player.y += dy / d * 16;
