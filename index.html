@@ -3905,6 +3905,7 @@
     setUp: (id, n) => { up[id] = n; recalc(); },
     addDmg: o => { Object.assign(dmgBy, o); },
     spr: name => { for (const r of STAGE_ROSTERS) ensureSprites(r); for (const r of STAGE_ROSTERS) { const t = r.find(x => x.name === name); if (t) return t.spr[0]; } return null; },
+    step: (dt, n) => { for (let i = 0; i < (n || 1); i++) update(dt); render(); },
     pause: on => setPause(on),
     endTest: win => { kills = 120; wave = win ? 15 : 7; time = 300; if (win) clearGame(); else { hp = 0; gameOver(); } },
     gold: n => { META.gold = n; },
@@ -3984,8 +3985,7 @@
   function frame(now) {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
-    update(dt);
-    render();
+    if (!window.__manual) { update(dt); render(); }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
