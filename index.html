@@ -42,7 +42,7 @@
   'use strict';
 
   const TAU = Math.PI * 2;
-  const BUILD = '50-walk';
+  const BUILD = '51-walk2';
   const FONT = "system-ui, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif";
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -694,32 +694,16 @@
     im.onload = () => { ART[key] = im; if (onload) onload(im); };
     im.src = 'assets/' + file;
   }
-  loadArt('hero', 'hero_musket.png', im => {
-    const h = 82, w = Math.round(im.width * h / im.height);
-    // single-pose art -> procedural walk: legs are sheared/lifted per column below the hip, torso bobs
-    const FW = PW * 2, FH = PH * 2, HW = w * 2, HH = h * 2, cx = FW / 2, base = FH - 8;
-    const cv = document.createElement('canvas'); cv.width = FW; cv.height = FH;
-    const hs = document.createElement('canvas'); hs.width = HW; hs.height = HH; // pre-scaled 1:1 source so strips never resample
-    const hg = hs.getContext('2d'); hg.imageSmoothingQuality = 'high'; hg.drawImage(im, 0, 0, HW, HH);
-    const hip = HH * 0.5, CW = 1, RB = 2;
-    const frame = (ph, walking) => {
-      const c = mk(PW, PH, () => {}), g = c.getContext('2d');
-      g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false;
-      const bob = walking ? -Math.round(Math.abs(Math.sin(ph)) * 3) : 0, lean = walking ? Math.sin(ph) * .02 : 0;
-      g.translate(Math.round(cx - HW / 2), Math.round(base - HH + bob));
-      for (let y = 0; y < HH; y += RB) {
-        const k = walking ? Math.max(0, (y - hip) / (HH - hip)) : 0;
-        for (let x = 0; x < HW; x += CW) {
-          const side = Math.max(-1, Math.min(1, (x + CW / 2 - HW * 0.46) / (HW * 0.14)));
-          const ox = Math.round(k * 9 * Math.sin(ph) * side);
-          const lift = Math.round(k * k * 7 * Math.max(0, Math.cos(ph) * -side));
-          g.drawImage(hs, x, y, CW + 1, RB + 1, x + ox, y - lift, CW + 1, RB + 1);
-        }
-      }
+  // 8-frame side-view walk sheet (assets/hero_walk.png: 230x196 cells, feet on the bottom edge, torso centroid at 38% of the cell)
+  const HERO_K = 88 / 190, HERO_IDLE = 2;
+  const heroDraw = (g, i, x, y, k) => { const f = ART.heroFrames[i]; g.drawImage(f, x - f.width * .38 * HERO_K * k, y - (f.height - 3) * HERO_K * k, f.width * HERO_K * k, f.height * HERO_K * k); };
+  loadArt('hero', 'hero_walk.png', im => {
+    const cw = im.width / 8;
+    playerFrames = ART.heroFrames = Array.from({ length: 8 }, (_, i) => {
+      const c = document.createElement('canvas'); c.width = cw; c.height = im.height;
+      c.getContext('2d').drawImage(im, i * cw, 0, cw, im.height, 0, 0, cw, im.height);
       return c;
-    };
-    ART.heroIdle = frame(0, false);
-    playerFrames = ART.heroFrames = [ART.heroIdle].concat(Array.from({ length: 8 }, (_, i) => frame(i * Math.PI / 4, true)));
+    });
     heroCache.length = 0;
   });
 
@@ -3076,7 +3060,7 @@
   function drawPlayer() {
     const px = player.x - camL, py = player.y - camT;
     drawRune(px, py);
-    const frame = player.moving ? (ART.heroFrames ? 1 + Math.floor(player.walk) % 8 : Math.floor(player.walk) % 4) : 0;
+    const frame = ART.heroFrames ? (player.moving ? Math.floor(player.walk) % 8 : HERO_IDLE) : player.moving ? (Math.floor(player.walk) % 4) : 0;
     const breathe = player.moving ? 0 : Math.sin(clock * 3) * 0.8;
     if (up.laser > 0) { // laser emitter floating behind the hero
       const ex = px - player.face * 16, ey = py - 34 + breathe, active = lasers.length > 0;
@@ -3097,9 +3081,9 @@
     }
     ctx.save();
     ctx.translate(px, py + breathe);
-    const hs = ART.heroFrames ? 1.25 : 0.9; ctx.scale(player.face * hs, hs);
+    ctx.scale(player.face * (ART.heroFrames ? 1.15 : 0.9), ART.heroFrames ? 1.15 : 0.9);
     if (invuln > 0) ctx.globalAlpha = Math.sin(clock * 50) > 0 ? 1 : 0.4;
-    ctx.drawImage(playerFrames[frame], -PAX, -PAY, PW, PH);
+    if (ART.heroFrames) heroDraw(ctx, frame, 0, 0, 1); else ctx.drawImage(playerFrames[frame], -PAX, -PAY, PW, PH);
     ctx.restore();
     if (hp < S.maxHp) { // small health bar under the hero
       const bw = 38, bx = px - bw / 2, by = py + 10, f = Math.max(0, hp / S.maxHp);
@@ -3754,7 +3738,7 @@
     ctx.strokeStyle = hcan ? '#ffd24a' : 'rgba(255,214,90,0.4)'; ctx.lineWidth = hcan ? 2.4 : 1.4; ctx.stroke();
     evoFlash = Math.max(0, evoFlash - 0.02);
     if (evoFlash > 0) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,230,140,${evoFlash * 0.5})`; ctx.fillRect(px, hy, pw, hh); ctx.restore(); }
-    ctx.drawImage(getHeroFrames(ht)[1], px + 6, hy + 2, PW, PH);
+    if (ART.heroFrames) heroDraw(ctx, HERO_IDLE, px + 6 + PW / 2, hy + PH - 8, .85); else ctx.drawImage(getHeroFrames(ht)[1], px + 6, hy + 2, PW, PH);
     ctx.textAlign = 'left';
     ctx.font = `bold 11px ${FONT}`; ctx.fillStyle = '#ffd24a'; ctx.fillText(`主人公 Lv ${ht + 1} / ${HERO_COST.length + 1}`, px + 78, hy + 20);
     ctx.font = `bold 16px ${FONT}`; ctx.fillStyle = '#f2f8ff'; ctx.fillText(HERO_NAMES[ht], px + 78, hy + 42);
