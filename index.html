@@ -3876,9 +3876,9 @@
       dg.addColorStop(0, 'rgba(255,30,70,0)'); dg.addColorStop(1, `rgba(255,30,70,${da})`);
       ctx.fillStyle = dg; ctx.fillRect(0, 0, W, H);
     }
-    drawHud();
+    if (!window.__noHud) drawHud();
     drawStick();
-    ctx.font = `10px ${FONT}`; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillText('build ' + BUILD, 8, H - 8);
+    if (!window.__noHud) { ctx.font = `10px ${FONT}`; ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillText('build ' + BUILD, 8, H - 8); }
     if (state === 'levelup') drawLevelUp();
     if (state === 'dead') drawGameOver();
     if (state === 'shop') drawShop();
