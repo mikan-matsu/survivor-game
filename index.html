@@ -3991,5 +3991,13 @@
   requestAnimationFrame(frame);
 })();
 </script>
+<script>
+// Page-view count for the weekly access report (DriftCraft TechBlogStack, lambda/page-views).
+// Only the path and the referrer are sent; no cookies, nothing personal.
+if (location.hostname === 'survivor.drift-craft.com' && navigator.sendBeacon) {
+  navigator.sendBeacon('https://8npj0p1tr3.execute-api.us-east-1.amazonaws.com/hit',
+    JSON.stringify({ path: location.pathname, ref: document.referrer }));
+}
+</script>
 </body>
 </html>
